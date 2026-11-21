@@ -1,0 +1,210 @@
+{
+  "action": "jump",
+  "source": "222_clean.png",
+  "sourceSize": [
+    1252,
+    1252
+  ],
+  "sourceScale": 2.3404,
+  "normalizedScale": 1.0,
+  "resampleFactor": 0.427277,
+  "fps": 12,
+  "colorMatch": {
+    "method": "histogram_specification(RGB→HSV-SV)",
+    "reference": "slide",
+    "svRefine": true
+  },
+  "anchorNote": "anchorX 逐帧取头部区域水平中心；anchorY 逐帧取轮廓最低点（脚底） —— 两轴都归一化，帧内排版位移全部归零",
+  "bands": [
+    {
+      "index": 0,
+      "y": [
+        132,
+        484
+      ],
+      "anchorY": 206.8,
+      "frames": 5
+    },
+    {
+      "index": 1,
+      "y": [
+        684,
+        1055
+      ],
+      "anchorY": 450.78,
+      "frames": 5
+    }
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "band": 0,
+      "file": "jump_00.png",
+      "w": 101,
+      "h": 106,
+      "anchorX": 54.91,
+      "anchorY": 105.54,
+      "anchorYBand": 105.54,
+      "srcBbox": [
+        12,
+        237,
+        248,
+        484
+      ],
+      "srcCx": 140.5
+    },
+    {
+      "index": 1,
+      "band": 0,
+      "file": "jump_01.png",
+      "w": 100,
+      "h": 139,
+      "anchorX": 49.56,
+      "anchorY": 138.44,
+      "anchorYBand": 138.44,
+      "srcBbox": [
+        253,
+        160,
+        485,
+        484
+      ],
+      "srcCx": 369.0
+    },
+    {
+      "index": 2,
+      "band": 0,
+      "file": "jump_02.png",
+      "w": 93,
+      "h": 139,
+      "anchorX": 46.36,
+      "anchorY": 138.87,
+      "anchorYBand": 150.4,
+      "srcBbox": [
+        505,
+        132,
+        721,
+        457
+      ],
+      "srcCx": 613.5
+    },
+    {
+      "index": 3,
+      "band": 0,
+      "file": "jump_03.png",
+      "w": 102,
+      "h": 119,
+      "anchorX": 53.2,
+      "anchorY": 118.36,
+      "anchorYBand": 137.16,
+      "srcBbox": [
+        731,
+        163,
+        968,
+        440
+      ],
+      "srcCx": 855.5
+    },
+    {
+      "index": 4,
+      "band": 0,
+      "file": "jump_04.png",
+      "w": 105,
+      "h": 122,
+      "anchorX": 52.34,
+      "anchorY": 121.77,
+      "anchorYBand": 145.27,
+      "srcBbox": [
+        994,
+        144,
+        1238,
+        429
+      ],
+      "srcCx": 1116.5
+    },
+    {
+      "index": 5,
+      "band": 1,
+      "file": "jump_05.png",
+      "w": 98,
+      "h": 152,
+      "anchorX": 48.71,
+      "anchorY": 151.26,
+      "anchorYBand": 158.09,
+      "srcBbox": [
+        8,
+        685,
+        236,
+        1039
+      ],
+      "srcCx": 122.0
+    },
+    {
+      "index": 6,
+      "band": 1,
+      "file": "jump_06.png",
+      "w": 97,
+      "h": 155,
+      "anchorX": 48.07,
+      "anchorY": 154.25,
+      "anchorYBand": 158.52,
+      "srcBbox": [
+        254,
+        684,
+        479,
+        1045
+      ],
+      "srcCx": 366.5
+    },
+    {
+      "index": 7,
+      "band": 1,
+      "file": "jump_07.png",
+      "w": 103,
+      "h": 120,
+      "anchorX": 51.06,
+      "anchorY": 120.06,
+      "anchorYBand": 121.35,
+      "srcBbox": [
+        502,
+        771,
+        741,
+        1052
+      ],
+      "srcCx": 621.5
+    },
+    {
+      "index": 8,
+      "band": 1,
+      "file": "jump_08.png",
+      "w": 103,
+      "h": 97,
+      "anchorX": 56.4,
+      "anchorY": 96.99,
+      "anchorYBand": 97.85,
+      "srcBbox": [
+        756,
+        826,
+        996,
+        1053
+      ],
+      "srcCx": 888.0
+    },
+    {
+      "index": 9,
+      "band": 1,
+      "file": "jump_09.png",
+      "w": 89,
+      "h": 132,
+      "anchorX": 44.44,
+      "anchorY": 131.17,
+      "anchorYBand": 131.17,
+      "srcBbox": [
+        1020,
+        748,
+        1227,
+        1055
+      ],
+      "srcCx": 1124.0
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "action": "run",
+  "source": "111_clean.png",
+  "sourceSize": [
+    1252,
+    1252
+  ],
+  "sourceScale": 2.4962,
+  "normalizedScale": 1.0,
+  "resampleFactor": 0.400609,
+  "fps": 12,
+  "colorMatch": {
+    "method": "histogram_specification(RGB→HSV-SV)",
+    "reference": "slide",
+    "svRefine": true
+  },
+  "anchorNote": "anchorX 逐帧取头部区域水平中心；anchorY 逐帧取轮廓最低点（脚底） —— 两轴都归一化，帧内排版位移全部归零",
+  "bands": [
+    {
+      "index": 0,
+      "y": [
+        139,
+        480
+      ],
+      "anchorY": 192.29,
+      "frames": 4
+    },
+    {
+      "index": 1,
+      "y": [
+        703,
+        1037
+      ],
+      "anchorY": 415.43,
+      "frames": 4
+    }
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "band": 0,
+      "file": "run_00.png",
+      "w": 115,
+      "h": 133,
+      "anchorX": 65.1,
+      "anchorY": 132.6,
+      "anchorYBand": 133.4,
+      "srcBbox": [
+        19,
+        147,
+        304,
+        478
+      ],
+      "srcCx": 181.5
+    },
+    {
+      "index": 1,
+      "band": 0,
+      "file": "run_01.png",
+      "w": 116,
+      "h": 130,
+      "anchorX": 66.3,
+      "anchorY": 129.8,
+      "anchorYBand": 130.2,
+      "srcBbox": [
+        325,
+        155,
+        614,
+        479
+      ],
+      "srcCx": 490.5
+    },
+    {
+      "index": 2,
+      "band": 0,
+      "file": "run_02.png",
+      "w": 117,
+      "h": 137,
+      "anchorX": 61.89,
+      "anchorY": 136.61,
+      "anchorYBand": 136.61,
+      "srcBbox": [
+        637,
+        139,
+        928,
+        480
+      ],
+      "srcCx": 791.5
+    },
+    {
+      "index": 3,
+      "band": 0,
+      "file": "run_03.png",
+      "w": 117,
+      "h": 132,
+      "anchorX": 66.3,
+      "anchorY": 131.4,
+      "anchorYBand": 135.81,
+      "srcBbox": [
+        942,
+        141,
+        1232,
+        469
+      ],
+      "srcCx": 1107.5
+    },
+    {
+      "index": 4,
+      "band": 1,
+      "file": "run_04.png",
+      "w": 113,
+      "h": 131,
+      "anchorX": 63.1,
+      "anchorY": 131.0,
+      "anchorYBand": 131.8,
+      "srcBbox": [
+        24,
+        708,
+        304,
+        1035
+      ],
+      "srcCx": 181.5
+    },
+    {
+      "index": 5,
+      "band": 1,
+      "file": "run_05.png",
+      "w": 116,
+      "h": 127,
+      "anchorX": 66.1,
+      "anchorY": 126.59,
+      "anchorYBand": 126.59,
+      "srcBbox": [
+        330,
+        721,
+        618,
+        1037
+      ],
+      "srcCx": 495.0
+    },
+    {
+      "index": 6,
+      "band": 1,
+      "file": "run_06.png",
+      "w": 110,
+      "h": 133,
+      "anchorX": 58.69,
+      "anchorY": 132.6,
+      "anchorYBand": 132.6,
+      "srcBbox": [
+        642,
+        706,
+        915,
+        1037
+      ],
+      "srcCx": 788.5
+    },
+    {
+      "index": 7,
+      "band": 1,
+      "file": "run_07.png",
+      "w": 112,
+      "h": 129,
+      "anchorX": 62.09,
+      "anchorY": 128.6,
+      "anchorYBand": 133.8,
+      "srcBbox": [
+        942,
+        703,
+        1220,
+        1024
+      ],
+      "srcCx": 1097.0
+    }
+  ]
+}

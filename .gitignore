@@ -1,0 +1,24 @@
+# Godot 4 缓存与本地产物
+.godot/
+
+# 本地保留资料与打包输出
+dist/
+image/
+docs/
+.workbuddy/
+
+# 工具临时目录与 Python 缓存
+tools/_preview/
+tools/_work/
+tools/__pycache__/
+*.pyc
+__pycache__/
+
+# 操作系统与编辑器临时文件
+*.TMP
+*.tmp
+*.old
+*.log
+settings.cfg
+.DS_Store
+Thumbs.db
