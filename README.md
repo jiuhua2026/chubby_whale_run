@@ -2,6 +2,22 @@
 
 一款使用 **Godot 4.7.2** 开发的深海像素风 2D 横版休闲跑酷游戏。玩家操控深海蓝鲸娘在海底礁石与沉船遗迹间跳跃、滑铲，并通过擦身而过积攒势能发动冲刺，甩开身后的黑鲸娘追击与死亡边界。
 
+> **Windows 玩家可直接试玩**：前往 [Releases 最新版本](https://github.com/jiuhua2026/chubby_whale_run/releases) 下载 `chubby_whale_run.exe`，双击即可运行（无需安装 Godot）。
+
+---
+
+## 游戏展示
+
+<p align="center">
+  <img src="media/chase_preview.gif" alt="黑鲸娘追逐实机动图" width="760" />
+  <br />
+  <sub>黑鲸娘贴身追击：越过沉船木桶堆与地形凹坑</sub>
+</p>
+
+| 主菜单界面 | 阶梯凹凸地形 | 高低断桥飞跃 |
+| :---: | :---: | :---: |
+| ![主菜单界面](media/menu.png) | ![阶梯凹凸地形](media/terrain_stepped.png) | ![高低断桥飞跃](media/broken_chasm.png) |
+
 ---
 
 ## 游戏特色
@@ -36,7 +52,7 @@
 ### 运行方式
 1. 克隆本仓库：
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/jiuhua2026/chubby_whale_run.git
    cd chubby_whale_run
    ```
 2. 使用 **Godot 4.7.2** 打开根目录的 `project.godot`，点击运行即可游玩。
@@ -67,6 +83,7 @@ godot --headless --fixed-fps 60 --quit-after 2400 --path . -- --selftest --solva
 ```text
 chubby_whale_run/
 ├── audio/                 # 游戏 BGM 与 SFX（含 .import）
+├── media/                 # README 展示截图与实机动图（含 .gdignore）
 ├── scenes/                # 主场景与玩家场景（Main.tscn / Player.tscn）
 ├── scripts/               # 全部 GDScript 源码（autoload / main / player / chase / world / ui / fx / dev）
 ├── sprites/               # 角色、追兵、地形、障碍、UI、特效与图标（sprites/icon/）
