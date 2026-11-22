@@ -2,12 +2,12 @@
   "action": "run",
   "source": "111_clean.png",
   "sourceSize": [
-    1252,
-    1252
+    1254,
+    1254
   ],
-  "sourceScale": 2.4962,
+  "sourceScale": 2.4848,
   "normalizedScale": 1.0,
-  "resampleFactor": 0.400609,
+  "resampleFactor": 0.402447,
   "fps": 12,
   "colorMatch": {
     "method": "histogram_specification(RGB→HSV-SV)",
@@ -19,19 +19,19 @@
     {
       "index": 0,
       "y": [
-        139,
+        145,
         480
       ],
-      "anchorY": 192.29,
+      "anchorY": 193.17,
       "frames": 4
     },
     {
       "index": 1,
       "y": [
-        703,
-        1037
+        705,
+        1039
       ],
-      "anchorY": 415.43,
+      "anchorY": 418.14,
       "frames": 4
     }
   ],
@@ -41,85 +41,85 @@
       "band": 0,
       "file": "run_00.png",
       "w": 115,
-      "h": 133,
-      "anchorX": 65.1,
-      "anchorY": 132.6,
-      "anchorYBand": 133.4,
+      "h": 132,
+      "anchorX": 65.4,
+      "anchorY": 132.0,
+      "anchorYBand": 133.61,
       "srcBbox": [
-        19,
-        147,
-        304,
-        478
+        20,
+        148,
+        305,
+        476
       ],
-      "srcCx": 181.5
+      "srcCx": 182.5
     },
     {
       "index": 1,
       "band": 0,
       "file": "run_01.png",
-      "w": 116,
-      "h": 130,
-      "anchorX": 66.3,
-      "anchorY": 129.8,
-      "anchorYBand": 130.2,
+      "w": 117,
+      "h": 131,
+      "anchorX": 67.01,
+      "anchorY": 130.8,
+      "anchorYBand": 130.8,
       "srcBbox": [
-        325,
+        327,
         155,
-        614,
-        479
+        616,
+        480
       ],
-      "srcCx": 490.5
+      "srcCx": 493.5
     },
     {
       "index": 2,
       "band": 0,
       "file": "run_02.png",
-      "w": 117,
-      "h": 137,
-      "anchorX": 61.89,
-      "anchorY": 136.61,
-      "anchorYBand": 136.61,
+      "w": 116,
+      "h": 134,
+      "anchorX": 61.37,
+      "anchorY": 133.61,
+      "anchorYBand": 134.82,
       "srcBbox": [
-        637,
-        139,
-        928,
-        480
+        641,
+        145,
+        927,
+        477
       ],
-      "srcCx": 791.5
+      "srcCx": 793.5
     },
     {
       "index": 3,
       "band": 0,
       "file": "run_03.png",
-      "w": 117,
-      "h": 132,
-      "anchorX": 66.3,
-      "anchorY": 131.4,
-      "anchorYBand": 135.81,
+      "w": 116,
+      "h": 131,
+      "anchorX": 65.8,
+      "anchorY": 130.8,
+      "anchorYBand": 134.82,
       "srcBbox": [
-        942,
-        141,
-        1232,
-        469
+        948,
+        145,
+        1234,
+        470
       ],
-      "srcCx": 1107.5
+      "srcCx": 1111.5
     },
     {
       "index": 4,
       "band": 1,
       "file": "run_04.png",
-      "w": 113,
-      "h": 131,
-      "anchorX": 63.1,
-      "anchorY": 131.0,
-      "anchorYBand": 131.8,
+      "w": 114,
+      "h": 132,
+      "anchorX": 64.79,
+      "anchorY": 131.6,
+      "anchorYBand": 132.81,
       "srcBbox": [
-        24,
-        708,
-        304,
-        1035
+        23,
+        709,
+        306,
+        1036
       ],
-      "srcCx": 181.5
+      "srcCx": 184.0
     },
     {
       "index": 5,
@@ -127,50 +127,50 @@
       "file": "run_05.png",
       "w": 116,
       "h": 127,
-      "anchorX": 66.1,
-      "anchorY": 126.59,
-      "anchorYBand": 126.59,
+      "anchorX": 66.0,
+      "anchorY": 126.37,
+      "anchorYBand": 126.77,
       "srcBbox": [
-        330,
-        721,
-        618,
-        1037
+        334,
+        724,
+        620,
+        1038
       ],
-      "srcCx": 495.0
+      "srcCx": 498.0
     },
     {
       "index": 6,
       "band": 1,
       "file": "run_06.png",
-      "w": 110,
-      "h": 133,
-      "anchorX": 58.69,
-      "anchorY": 132.6,
-      "anchorYBand": 132.6,
+      "w": 109,
+      "h": 134,
+      "anchorX": 58.15,
+      "anchorY": 133.21,
+      "anchorYBand": 133.21,
       "srcBbox": [
-        642,
-        706,
-        915,
-        1037
+        647,
+        708,
+        918,
+        1039
       ],
-      "srcCx": 788.5
+      "srcCx": 791.5
     },
     {
       "index": 7,
       "band": 1,
       "file": "run_07.png",
       "w": 112,
-      "h": 129,
-      "anchorX": 62.09,
-      "anchorY": 128.6,
-      "anchorYBand": 133.8,
+      "h": 130,
+      "anchorX": 62.58,
+      "anchorY": 129.59,
+      "anchorYBand": 134.42,
       "srcBbox": [
-        942,
-        703,
-        1220,
-        1024
+        947,
+        705,
+        1225,
+        1027
       ],
-      "srcCx": 1097.0
+      "srcCx": 1102.5
     }
   ]
 }

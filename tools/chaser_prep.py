@@ -19,7 +19,7 @@
 ③ 只在**贴着背景的 2px 边带**上按覆盖率给半透明 ⇒ 保留抗锯齿，同时把 JPEG 振铃判成背景。
 ④ 统一画布：**按"格心 x + 底边 y"对齐**（素材是等距格排的，格心对齐保留它自己设计的相对位移；
    底边对齐保证每帧站在同一基线上，不会上下抖）；再按**中位内容高**统一缩放到目标高度
-   ⇒ 不同素材（追2.jpg / 咬击.png）各自归一，切换时不会一大一小。
+   ⇒ 不同素材（chaser_chase_spritesheet.jpg / chaser_bite_spritesheet.png）各自归一，切换时不会一大一小。
 
 用法：
   python tools/chaser_prep.py --in a.jpg --out sprites/chaser_run --prefix chaser_run \

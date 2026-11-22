@@ -9,8 +9,8 @@ class_name Chaser
 ##   所以追击段的紧张感来自"零容错"，而不是"慢慢被追上"。
 ##
 ## ## 美术（2026-10-17 换真素材）
-## 素材由 `tools/chaser_prep.py` 从 `image/boss/pixel art/2.jpg`（追击循环 8 帧）和
-## 用户生成的「咬击.png」（咬击 4 帧）切出并统一到 ~165px 高：
+## 素材由 `tools/chaser_prep.py` 从 `image/boss/pixel_art/chaser_chase_spritesheet.jpg`（追击循环 8 帧）和
+## `image/boss/pixel_art/chaser_bite_spritesheet.png`（咬击 4 帧）切出并统一到 ~165px 高：
 ##   · 灰底抠像：**从四边 BFS 找"真背景"**，角色内部被围住的灰色算前景（不挖洞）
 ##   · 每格内部过滤连通块：丢碎点、丢**完全落在身体下方**的块（地面阴影；颜色判据分不开，
 ##     实测阴影平均色离背景 34 = 角色本体也是 34）

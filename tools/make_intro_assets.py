@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import chaser_prep as cp
 
 SRC_COVER = "image/title_cover/title_screen_pixel_art.png"
-SRC_CHASER_BITE = "image/boss/pixel art/咬击.png"
+SRC_CHASER_BITE = "image/boss/pixel_art/chaser_bite_spritesheet.png"
 SRC_ROCK = "image/background/rock_src.jpg"
 OUT_DIR = "sprites/intro"
 
@@ -89,9 +89,9 @@ def build_title_splash_2x() -> None:
     print(f"  [OK] {out_path:<38} {im3.size} (源 {sw}x{sh} 精准同口径裁切)")
 
 
-# ---------------------------------------------------------------- 2. 原彩萌系黑鲸娘超近景贴脸飞扑（源自高精 咬击.png 第 2 帧）
+# ---------------------------------------------------------------- 2. 原彩萌系黑鲸娘超近景贴脸飞扑（源自高精 chaser_bite_spritesheet.png 第 2 帧）
 def build_chaser_wipe_rush() -> None:
-    """从高精原画 `咬击.png` 提取第 2 帧飞扑咬击姿，保留 100% 原彩呆萌配色 (~897x867 RGBA)。
+    """从高精原画 `chaser_bite_spritesheet.png` 提取第 2 帧飞扑咬击姿，保留 100% 原彩呆萌配色 (~897x867 RGBA)。
 
     设计规范（改法 A · 0 恐怖感）：
       · 完全保留粉嫩腮红、水润大眼、可爱“嗷呜”张嘴与黑白女仆装原色（绝不做黑化发光鬼眼）
