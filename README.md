@@ -9,7 +9,7 @@
 ## 游戏展示
 
 <p align="center">
-  <img src="media/chase_preview.gif" alt="黑鲸娘追逐实机动图" width="760" />
+  <img src="media/chase_preview.webp" alt="黑鲸娘追逐实机动图" width="760" />
   <br />
   <sub>黑鲸娘贴身追击：越过沉船木桶堆与地形凹坑</sub>
 </p>
