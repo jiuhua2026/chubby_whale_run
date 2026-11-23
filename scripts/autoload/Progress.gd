@@ -14,10 +14,13 @@ var unlocked_achievements := {}
 
 var stats := {
 	"best_run_dist_m": 0,
+	"best_no_hit_dist_m": 0,
+	"best_run_near_misses": 0,
 	"best_run_dashes": 0,
 	"total_dist_m": 0,
 	"total_near_misses": 0,
 	"total_dashes": 0,
+	"total_chases_survived": 0,
 	"total_runs": 0,
 	"caught_count": 0,
 	"chasm_count": 0,
@@ -26,7 +29,9 @@ var stats := {
 
 ## 本局临时进度（每次正常模式开局重置）
 var _run_dist_m := 0
+var _run_near_misses := 0
 var _run_dashes := 0
+var _run_hits := 0
 var _tracking_run := false
 var _from_ready := false
 ## 自动化测试期间关闭真实写盘，但在内存中跑完整触发流程
@@ -40,6 +45,8 @@ func _ready() -> void:
 	GameState.distance_meter_changed.connect(_on_distance_meter)
 	GameState.near_miss_awarded.connect(_on_near_miss)
 	GameState.dash_started.connect(_on_dash)
+	GameState.player_hit.connect(_on_player_hit)
+	GameState.chase_ended.connect(_on_chase_ended)
 	GameState.run_ended.connect(_on_run_ended)
 	GameState.menu_opened.connect(_on_menu_opened)
 
@@ -77,7 +84,9 @@ func _reset_in_memory() -> void:
 	for k: String in stats.keys():
 		stats[k] = 0
 	_run_dist_m = 0
+	_run_near_misses = 0
 	_run_dashes = 0
+	_run_hits = 0
 	_tracking_run = false
 	_from_ready = false
 
@@ -141,7 +150,9 @@ func _can_track() -> bool:
 
 func _on_begin_or_start() -> void:
 	_run_dist_m = 0
+	_run_near_misses = 0
 	_run_dashes = 0
+	_run_hits = 0
 	_from_ready = true
 	_tracking_run = _can_track()
 
@@ -151,7 +162,9 @@ func _on_run_started() -> void:
 		_from_ready = false
 		return
 	_run_dist_m = 0
+	_run_near_misses = 0
 	_run_dashes = 0
+	_run_hits = 0
 	_tracking_run = _can_track()
 
 
@@ -171,13 +184,18 @@ func _on_distance_meter(meters: int) -> void:
 	stats["total_dist_m"] = int(stats["total_dist_m"]) + dm
 	if _run_dist_m > int(stats["best_run_dist_m"]):
 		stats["best_run_dist_m"] = _run_dist_m
+	if _run_hits == 0 and _run_dist_m > int(stats["best_no_hit_dist_m"]):
+		stats["best_no_hit_dist_m"] = _run_dist_m
 	_check_unlocks()
 
 
 func _on_near_miss() -> void:
 	if not _can_track() or not _tracking_run:
 		return
+	_run_near_misses += 1
 	stats["total_near_misses"] = int(stats["total_near_misses"]) + 1
+	if _run_near_misses > int(stats["best_run_near_misses"]):
+		stats["best_run_near_misses"] = _run_near_misses
 	_check_unlocks()
 
 
@@ -188,6 +206,19 @@ func _on_dash() -> void:
 	stats["total_dashes"] = int(stats["total_dashes"]) + 1
 	if _run_dashes > int(stats["best_run_dashes"]):
 		stats["best_run_dashes"] = _run_dashes
+	_check_unlocks()
+
+
+func _on_player_hit(_kind: String) -> void:
+	if not _can_track() or not _tracking_run:
+		return
+	_run_hits += 1
+
+
+func _on_chase_ended(_index: int) -> void:
+	if not _can_track() or not _tracking_run:
+		return
+	stats["total_chases_survived"] = int(stats["total_chases_survived"]) + 1
 	_check_unlocks()
 
 

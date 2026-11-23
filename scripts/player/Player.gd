@@ -488,6 +488,7 @@ func take_hit(kind: String) -> void:
 	if dash_fx != null:
 		dash_fx.spawn_hit(global_position + Vector2(16.0, -14.0))
 	hit_taken.emit(kind)
+	GameState.player_hit.emit(kind)
 
 
 # ---------------------------------------------------------------- 擦身而过

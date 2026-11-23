@@ -1139,7 +1139,7 @@ func _run_restart_demo() -> void:
 		get_tree().quit(1)
 
 
-## `-- --achievements-demo`：在内存测试沙盒内完整验证 5 张纪念画片资源、7 个成就解锁、Toast 与图鉴面板交互。
+## `-- --achievements-demo`：在内存测试沙盒内完整验证 5 张纪念画片资源、15 个成就解锁、Toast 停留时长与图鉴面板交互。
 func _run_achievements_demo() -> void:
 	var st := {"ok": true}
 	var fail := func(msg: String) -> void:
@@ -1149,7 +1149,7 @@ func _run_achievements_demo() -> void:
 
 	Progress.begin_test_sandbox()
 
-	# 1. 所有 6 张纪念画片预览图资源必须存在，且主角保持默认精修动作帧（8/10/10）
+	# 1. 所有 5 张纪念画片预览图资源必须存在，且主角保持默认精修动作帧（8/10/10）
 	for a: Dictionary in SkinCatalog.ARTWORKS:
 		var pv := String(a["preview"])
 		if not ResourceLoader.exists(pv):
@@ -1159,54 +1159,83 @@ func _run_achievements_demo() -> void:
 			or player._anim.frame_count("jump") != 10 \
 			or player._anim.frame_count("slide") != 10:
 		fail.call("默认深海女仆动作帧加载异常")
+	if SkinCatalog.ACHIEVEMENTS.size() != 15:
+		fail.call("成就总数应为 15，实际=%d" % SkinCatalog.ACHIEVEMENTS.size())
 
-	# 2. 练习模式下跑动 / 擦身 / 冲刺 / 死亡不能计入正式成就
+	# 2. 练习模式下跑动 / 擦身 / 冲刺 / 追击 / 死亡不能计入正式成就
 	GameState.start_run(GameState.Mode.PRACTICE)
-	GameState.add_distance(350.0 * 64.0)
+	GameState.add_distance(1600.0 * 64.0)
 	GameState.near_miss_awarded.emit()
 	GameState.dash_started.emit()
+	GameState.chase_ended.emit(0)
 	GameState.end_run("caught_by_chaser")
 	if Progress.unlocked_achievement_count() != 0 or int(Progress.stats["total_dist_m"]) != 0:
 		fail.call("练习模式不应计入正式成就与累计数据")
 
-	# 3. 正常模式验证：300m 初潜突围 + 20 擦身 + 15 冲刺 + Toast
+	# 3a. 先测“无伤游侠”会被撞障打断（200m 撞障 -> 跑满 500m 仍不应解锁）
 	GameState.start_run(GameState.Mode.NORMAL)
-	GameState.add_distance(299.0 * 64.0)
-	if Progress.is_achievement_unlocked("ach_dive_300m"):
-		fail.call("299m 时不应提前解锁 初潜突围")
-	GameState.add_distance(1.0 * 64.0)
+	GameState.add_distance(200.0 * 64.0)
+	GameState.player_hit.emit("obstacle")
+	GameState.add_distance(400.0 * 64.0) # 共 600m（解锁初潜突围 & 深海长泳），但撞过障不应解锁无伤游侠
 	await get_tree().process_frame
-	if not Progress.is_achievement_unlocked("ach_dive_300m") or not _toast.is_showing():
-		fail.call("300m 时未解锁 初潜突围 或 Toast 未弹出")
-	for _i in 20:
+	if not Progress.is_achievement_unlocked("ach_dive_300m") or not Progress.is_achievement_unlocked("ach_dive_600m"):
+		fail.call("600m 未解锁 初潜突围 或 深海长泳")
+	if Progress.is_achievement_unlocked("ach_nohit_500m"):
+		fail.call("局内撞障后跑满 600m 不应解锁 无伤游侠")
+	if not _toast.is_showing():
+		fail.call("成就解锁后 Toast 未弹出")
+	# 验证 Toast 至少稳定停留且在 >1.2s 后仍然完全可见（未提前淡出消失）
+	await get_tree().create_timer(1.2).timeout
+	if not _toast.is_showing() or _toast._card.modulate.a < 0.9 or _toast._holder.position.y < 40.0:
+		fail.call("Toast 在 1.2s 时提前消失或未停稳 (showing=%s alpha=%.2f y=%.1f)" % [
+			_toast.is_showing(), _toast._card.modulate.a, _toast._holder.position.y
+		])
+
+	# 3b. 新开一局零撞障跑满 1500m + 单局 10 擦身 + 5 冲刺 + 摆脱追击，触发技巧与追击类成就
+	GameState.start_run(GameState.Mode.NORMAL)
+	GameState.add_distance(500.0 * 64.0)
+	if not Progress.is_achievement_unlocked("ach_nohit_500m"):
+		fail.call("零撞障跑满 500m 应解锁 无伤游侠")
+	for _i in 10:
+		GameState.near_miss_awarded.emit()
+	if not Progress.is_achievement_unlocked("ach_nearmiss_run_10"):
+		fail.call("单局 10 次擦身未解锁 刀尖圆舞曲")
+	for _i in 10:
 		GameState.near_miss_awarded.emit()
 	if not Progress.is_achievement_unlocked("ach_nearmiss_20"):
 		fail.call("累计 20 次擦身未解锁 贴脸舞者")
 	for _i in 4:
 		GameState.dash_started.emit()
-	# 1000m 但只有 4 次冲刺 ⇒ 尚不能解锁 甩尾大师
-	GameState.add_distance(700.0 * 64.0)
+	GameState.add_distance(500.0 * 64.0) # 1000m 但只有 4 冲刺 -> 不解锁甩尾大师
 	if Progress.is_achievement_unlocked("ach_master_1000m_5dash"):
 		fail.call("1000m + 4 次冲刺时不应提前解锁 甩尾大师")
-	# 补第 5 次冲刺 ⇒ 立刻同时达成 1000m + 5 冲刺解锁 甩尾大师
-	GameState.dash_started.emit()
+	GameState.dash_started.emit() # 第 5 冲刺 -> 解锁甩尾大师
 	if not Progress.is_achievement_unlocked("ach_master_1000m_5dash"):
 		fail.call("1000m 后补足第 5 次冲刺应立即解锁 甩尾大师")
-	# 再补 10 次冲刺 ⇒ 累计 15 次冲刺解锁 深海疾风
-	for _i in 10:
-		GameState.dash_started.emit()
-	if not Progress.is_achievement_unlocked("ach_dash_15"):
-		fail.call("累计 15 次冲刺未解锁 深海疾风")
+	GameState.add_distance(500.0 * 64.0) # 1500m -> 解锁无底深潜者
+	if not Progress.is_achievement_unlocked("ach_dive_1500m"):
+		fail.call("1500m 未解锁 无底深潜者")
+	for _i in 45:
+		GameState.dash_started.emit() # 累计 5+45=50 次 -> 解锁深海疾风 & 涡轮鲸娘
+	if not Progress.is_achievement_unlocked("ach_dash_15") or not Progress.is_achievement_unlocked("ach_dash_50"):
+		fail.call("累计 50 次冲刺未解锁 深海疾风 或 涡轮鲸娘")
+	GameState.chase_ended.emit(0)
+	if not Progress.is_achievement_unlocked("ach_chase_escape_1"):
+		fail.call("首次摆脱追击未解锁 鲸口逃生")
+	for c_idx in range(1, 5):
+		GameState.chase_ended.emit(c_idx)
+	if not Progress.is_achievement_unlocked("ach_chase_escape_5"):
+		fail.call("累计 5 次摆脱追击未解锁 追逐大师")
 	GameState.end_run("caught_by_chaser")
 	if not Progress.is_achievement_unlocked("ach_easter_caught"):
 		fail.call("caught_by_chaser 未解锁彩蛋 美味大肥鱼")
 
-	# 4. 补足 10 次堕崖与 1 次死亡边界彩蛋 ⇒ 全部 7 个成就均应解锁
+	# 4. 已完成 2 局，再补 10 局（1 次边界 + 10 次堕崖 -> 总计 12 局 >= 10）⇒ 全部 15 个成就均应解锁
 	for r in 11:
 		GameState.start_run(GameState.Mode.NORMAL)
 		GameState.end_run("caught_by_wall" if r == 0 else "fell_into_chasm")
 	if Progress.unlocked_achievement_count() != SkinCatalog.ACHIEVEMENTS.size():
-		fail.call("全部 7 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
+		fail.call("全部 15 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
 
 	# 5. UI 面板（主菜单 3 成就打开与 ESC 关闭 + 4 设置不再含重复成就行）
 	GameState.to_menu()

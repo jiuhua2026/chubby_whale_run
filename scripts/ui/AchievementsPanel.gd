@@ -1,7 +1,7 @@
 extends Control
 class_name AchievementsPanel
 ## 主菜单「3 成就」图鉴面板：
-##   左侧：初始纪念「深海女仆」 + 8 项游戏成就（含实时进度条）
+##   左侧：初始纪念「深海女仆」 + 15 项游戏成就（含实时进度条，支持滚动浏览）
 ##   右侧：深海聚光灯画片舞台（未解锁展示暗蓝神秘剪影 + 锁印，达成后彩绘点亮）
 
 signal closed()
@@ -18,6 +18,7 @@ void fragment() {
 var _entries: Array[Dictionary] = []
 var _sel := 0
 var _summary_lbl: Label
+var _left_scroll: ScrollContainer
 var _list_panels: Array[PanelContainer] = []
 var _list_names: Array[Label] = []
 var _list_tags: Array[Label] = []
@@ -66,7 +67,7 @@ func _ready() -> void:
 			"ach_id": aid,
 			"art_id": rid if rid != "" else "default",
 			"title": String(ach["name"]),
-			"tag": "画片" if rid != "" else "彩蛋",
+			"tag": String(ach.get("tag", "画片" if rid != "" else "成就")),
 		})
 
 	var dim := ColorRect.new()
@@ -110,11 +111,18 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation", 18)
 	root_vb.add_child(body)
 
-	# 左侧列表（9 项紧凑排版，无需滚动即可全览）
+	# 左侧列表（可滚动浏览全部 16 项：初始纪念 + 15 项成就）
+	_left_scroll = ScrollContainer.new()
+	_left_scroll.custom_minimum_size = Vector2(286, 430)
+	_left_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_left_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	body.add_child(_left_scroll)
+
 	var left_col := VBoxContainer.new()
 	left_col.custom_minimum_size = Vector2(270, 0)
+	left_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_col.add_theme_constant_override("separation", 6)
-	body.add_child(left_col)
+	_left_scroll.add_child(left_col)
 
 	for i in _entries.size():
 		var item_box := PanelContainer.new()
@@ -486,6 +494,8 @@ func refresh() -> void:
 		_bar_fill.color = Color(0.46, 0.92, 0.64, 0.98)
 		_prog_lbl.text = "已收集"
 		_prog_lbl.add_theme_color_override("font_color", Color(0.52, 0.96, 0.70))
+		if _left_scroll != null and _sel >= 0 and _sel < _list_panels.size():
+			_left_scroll.ensure_control_visible.call_deferred(_list_panels[_sel])
 		return
 
 	var ach_id := String(cur["ach_id"])
@@ -493,32 +503,35 @@ func refresh() -> void:
 	var pr := Progress.achievement_progress(ach_id)
 	var done := bool(pr["done"])
 	var has_exclusive_art := String(ach.get("reward_art", "")) != ""
+	var is_easter := String(ach.get("tag", "")) == "彩蛋"
 
 	if done:
 		_preview_rect.material = null
 		_lock_stamp.visible = false
-		_badge_lbl.text = ("已点亮 · " + String(art["name"])) if has_exclusive_art else "彩蛋达成"
+		_badge_lbl.text = ("已点亮 · " + String(art["name"])) if has_exclusive_art else ("彩蛋达成" if is_easter else "成就达成")
 		_badge_lbl.add_theme_color_override("font_color", Color(1.0, 0.88, 0.48))
 		bsb.border_color = Color(0.92, 0.78, 0.36, 0.85)
 		_art_title.text = ("%s · %s" % [String(ach["name"]), String(art["name"])]) if has_exclusive_art else String(ach["name"])
-		_art_desc.text = String(art["desc"]) if has_exclusive_art else "深海旅途中的奇遇瞬间，已收录进深海纪念档案。"
+		_art_desc.text = String(art["desc"]) if has_exclusive_art else ("深海旅途中的奇遇瞬间，已收录进深海纪念档案。" if is_easter else "深海航程中的高光战绩，已永久镌刻进成就档案。")
 		_bar_fill.color = Color(0.46, 0.92, 0.64, 0.98)
 		_prog_lbl.add_theme_color_override("font_color", Color(0.52, 0.96, 0.70))
 	else:
 		_preview_rect.material = _silhouette_mat
 		_lock_stamp.visible = true
-		_lock_lbl.text = "尚未解锁 · 神秘剪影" if has_exclusive_art else "彩蛋尚未触发"
+		_lock_lbl.text = "尚未解锁 · 神秘剪影" if has_exclusive_art else ("彩蛋尚未触发" if is_easter else "成就尚未达成")
 		_badge_lbl.text = "未解锁（剪影）"
 		_badge_lbl.add_theme_color_override("font_color", Color(0.68, 0.82, 0.94))
 		bsb.border_color = Color(0.36, 0.66, 0.84, 0.78)
 		_art_title.text = "%s · ???" % String(ach["name"]) if has_exclusive_art else String(ach["name"])
-		_art_desc.text = "达成下方挑战条件即可点亮这张深海纪念画片。" if has_exclusive_art else "深海里的特殊遭遇，达成条件即可点亮彩蛋记录。"
+		_art_desc.text = "达成下方挑战条件即可点亮这张深海纪念画片。" if has_exclusive_art else ("深海里的特殊遭遇，达成条件即可点亮彩蛋记录。" if is_easter else "在正常模式达成下方挑战条件即可解锁该项深海成就。")
 		_bar_fill.color = Color(0.36, 0.78, 0.96, 0.95)
 		_prog_lbl.add_theme_color_override("font_color", Color(0.76, 0.88, 0.96))
 
 	_cond_lbl.text = "达成条件：%s" % String(ach["desc"])
 	_bar_fill.anchor_right = float(pr["ratio"])
 	_prog_lbl.text = String(pr["text"])
+	if _left_scroll != null and _sel >= 0 and _sel < _list_panels.size():
+		_left_scroll.ensure_control_visible.call_deferred(_list_panels[_sel])
 
 
 func _on_item_hover(i: int) -> void:

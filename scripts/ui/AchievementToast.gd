@@ -2,8 +2,9 @@ extends CanvasLayer
 class_name AchievementToast
 ## 局内成就解锁顶部轻提示横幅：逐条排队滑出，不打断跑酷节奏。
 
-const HOLD_SEC := 2.6
+const HOLD_SEC := 3.2
 
+var _holder: Control
 var _card: PanelContainer
 var _title_lbl: Label
 var _sub_lbl: Label
@@ -21,6 +22,17 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
+	_holder = Control.new()
+	_holder.anchor_left = 0.0
+	_holder.anchor_right = 1.0
+	_holder.anchor_top = 0.0
+	_holder.anchor_bottom = 0.0
+	_holder.offset_top = 0.0
+	_holder.offset_bottom = 0.0
+	_holder.position.y = -90.0
+	_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_holder)
+
 	_card = PanelContainer.new()
 	_card.anchor_left = 0.5
 	_card.anchor_right = 0.5
@@ -28,8 +40,10 @@ func _ready() -> void:
 	_card.anchor_bottom = 0.0
 	_card.offset_left = -220
 	_card.offset_right = 220
-	_card.offset_top = -90
+	_card.offset_top = 0
+	_card.offset_bottom = 0
 	_card.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_card.grow_vertical = Control.GROW_DIRECTION_END
 	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_card.visible = false
 	var sb := StyleBoxFlat.new()
@@ -42,7 +56,7 @@ func _ready() -> void:
 	sb.content_margin_top = 10
 	sb.content_margin_bottom = 10
 	_card.add_theme_stylebox_override("panel", sb)
-	root.add_child(_card)
+	_holder.add_child(_card)
 
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 2)
@@ -80,26 +94,23 @@ func _pop_next() -> void:
 		var art := SkinCatalog.get_artwork(aid)
 		_sub_lbl.text = "解锁纪念画片：%s（可在主菜单「成就」欣赏）" % String(art.get("name", aid))
 	else:
-		_sub_lbl.text = "彩蛋成就已收录至主菜单「成就」"
+		var tag := String(ach.get("tag", "成就"))
+		var prefix := "彩蛋成就" if tag == "彩蛋" else "深海成就"
+		_sub_lbl.text = "%s已收录至主菜单「成就」（%s）" % [prefix, String(ach.get("desc", ""))]
 
 	_card.visible = true
 	_card.modulate.a = 0.0
-	_card.offset_top = -84.0
+	_holder.position.y = -88.0
 	AudioManager.play_sfx("dash_ready", -2.0)
 
 	if _tw != null and _tw.is_valid():
 		_tw.kill()
 	_tw = create_tween()
-	_tw.set_parallel(true)
-	_tw.tween_property(_card, "offset_top", 56.0, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_tw.tween_property(_card, "modulate:a", 1.0, 0.22)
-	_tw.chain()
+	_tw.tween_property(_holder, "position:y", 56.0, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_tw.parallel().tween_property(_card, "modulate:a", 1.0, 0.22)
 	_tw.tween_interval(HOLD_SEC)
-	_tw.chain()
-	_tw.set_parallel(true)
-	_tw.tween_property(_card, "offset_top", -84.0, 0.25).set_trans(Tween.TRANS_SINE)
-	_tw.tween_property(_card, "modulate:a", 0.0, 0.25)
-	_tw.chain()
+	_tw.tween_property(_holder, "position:y", -88.0, 0.25).set_trans(Tween.TRANS_SINE)
+	_tw.parallel().tween_property(_card, "modulate:a", 0.0, 0.25)
 	_tw.tween_callback(_pop_next)
 
 
