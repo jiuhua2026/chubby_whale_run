@@ -31,12 +31,6 @@ const ARTWORKS := [
 		"preview": "res://sprites/skins/academy_plaid/preview.png",
 	},
 	{
-		"id": "burger_crew",
-		"name": "鲸堡店员",
-		"desc": "红白条纹制服与点餐耳麦，深海全勤打工人的荣耀。",
-		"preview": "res://sprites/skins/burger_crew/preview.png",
-	},
-	{
 		"id": "santa_cloak",
 		"name": "圣夜铃铛",
 		"desc": "红白绒边圣诞披风与铃铛结，献给甩尾大师的礼装。",
@@ -71,15 +65,6 @@ const ACHIEVEMENTS := [
 		"stat": "total_dashes",
 		"target": 15,
 		"unit": "次",
-	},
-	{
-		"id": "ach_total_5000m",
-		"name": "全勤打工鱼",
-		"desc": "正常模式累计奔跑 5000 m",
-		"reward_art": "burger_crew",
-		"stat": "total_dist_m",
-		"target": 5000,
-		"unit": "m",
 	},
 	{
 		"id": "ach_master_1000m_5dash",

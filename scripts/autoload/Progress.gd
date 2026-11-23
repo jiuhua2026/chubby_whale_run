@@ -54,7 +54,9 @@ func load_progress() -> void:
 	var ac: Variant = cf.get_value("achievements", "unlocked", [])
 	if typeof(ac) == TYPE_ARRAY:
 		for aid_v in ac:
-			unlocked_achievements[String(aid_v)] = true
+			var aid := String(aid_v)
+			if not SkinCatalog.get_achievement(aid).is_empty():
+				unlocked_achievements[aid] = true
 
 	for k: String in stats.keys():
 		stats[k] = maxi(0, int(cf.get_value("stats", k, 0)))

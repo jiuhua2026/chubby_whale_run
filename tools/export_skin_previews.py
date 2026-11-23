@@ -13,16 +13,20 @@ SKINS_SRC_DIR = os.path.join("image", "player", "skins")
 SKINS_OUT_DIR = os.path.join("sprites", "skins")
 TARGET_H = 260
 
-## 针对紧贴暖色肤色/红白衣领/抗锯齿细缝的定向补孔种子表（源图 left_slice 坐标）
-## 仅向内按亮白阈值扩张并带 max_area 保险丝，绝不波及周边红色条纹或白色手套/鞋面。
+SKIP_SKINS = {"burger_crew"}
+
+## 针对跨白名单区域/紧贴白色鞋袜描边的定向补孔种子表（源图 left_slice 坐标）
+## 仅向内按亮白阈值扩张并带 max_area 保险丝，绝不波及周边白色毛边或白袜。
 EXTRA_HOLE_SEEDS = {
-    "burger_crew": [
-        (387, 115),   # 顶部呆毛弯曲夹缝
-        (502, 204),   # 右上高马尾蝴蝶结后发隙
-        (244, 539),   # 下巴左侧发卷与衣领夹缝
-        (406, 541),   # 下巴右侧发卷与衣领夹缝
-        (452, 543),   # 右耳鳍下与马尾之间发隙
-        (437, 586),   # 右袖口与马尾之间发隙
+    "snow_cloak": [
+        (807, 1088),  # 右下斗篷下摆、长发与鲸鱼尾巴夹缝
+    ],
+    "academy_plaid": [
+        (600, 829),   # 右下格纹裙摆、长发与鲸鱼尾巴夹缝
+    ],
+    "santa_cloak": [
+        (332, 731),   # 双腿白袜正中纵向窄缝
+        (447, 734),   # 右下白色毛边裙底与鲸鱼尾巴之间细缝
     ],
 }
 
@@ -259,7 +263,7 @@ def _enclosed_white_pockets(im: Image.Image, t_bg: int = 238, extra_seeds: list[
             while dq:
                 i = dq.popleft()
                 pts_s.append(i)
-                if len(pts_s) > 800:
+                if len(pts_s) > 4500:
                     aborted = True
                     break
                 x, y = i % w, i // w
@@ -461,6 +465,8 @@ def main() -> None:
     if not os.path.isdir(SKINS_SRC_DIR):
         sys.exit(f"缺少源目录: {SKINS_SRC_DIR}")
     for skin_id in sorted(os.listdir(SKINS_SRC_DIR)):
+        if skin_id in SKIP_SKINS:
+            continue
         skin_dir = os.path.join(SKINS_SRC_DIR, skin_id)
         if not os.path.isdir(skin_dir):
             continue

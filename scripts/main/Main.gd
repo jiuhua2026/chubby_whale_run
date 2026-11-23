@@ -1139,11 +1139,11 @@ func _run_restart_demo() -> void:
 		get_tree().quit(1)
 
 
-## `-- --achievements-demo`：在内存测试沙盒内完整验证纪念画片资源、8 个成就解锁、Toast 与图鉴面板交互。
+## `-- --achievements-demo`：在内存测试沙盒内完整验证 5 张纪念画片资源、7 个成就解锁、Toast 与图鉴面板交互。
 func _run_achievements_demo() -> void:
-	var ok := true
+	var st := {"ok": true}
 	var fail := func(msg: String) -> void:
-		ok = false
+		st["ok"] = false
 		push_error("[achievements] FAIL: " + msg)
 		print("[achievements] FAIL: " + msg)
 
@@ -1201,17 +1201,12 @@ func _run_achievements_demo() -> void:
 	if not Progress.is_achievement_unlocked("ach_easter_caught"):
 		fail.call("caught_by_chaser 未解锁彩蛋 美味大肥鱼")
 
-	# 4. 多局累计跑满 5000m ⇒ 全勤打工鱼 + 其余彩蛋成就
-	for r in 10:
+	# 4. 补足 10 次堕崖与 1 次死亡边界彩蛋 ⇒ 全部 7 个成就均应解锁
+	for r in 11:
 		GameState.start_run(GameState.Mode.NORMAL)
-		GameState.add_distance(400.0 * 64.0)
 		GameState.end_run("caught_by_wall" if r == 0 else "fell_into_chasm")
-	GameState.start_run(GameState.Mode.NORMAL)
-	GameState.end_run("fell_into_chasm")
-	if not Progress.is_achievement_unlocked("ach_total_5000m"):
-		fail.call("累计满 5000m 未解锁 全勤打工鱼")
 	if Progress.unlocked_achievement_count() != SkinCatalog.ACHIEVEMENTS.size():
-		fail.call("全部 8 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
+		fail.call("全部 7 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
 
 	# 5. UI 面板（主菜单 3 成就打开与 ESC 关闭 + 4 设置不再含重复成就行）
 	GameState.to_menu()
@@ -1230,7 +1225,7 @@ func _run_achievements_demo() -> void:
 			fail.call("SettingsPanel 不应保留重复的 achievements 行")
 
 	Progress.end_test_sandbox()
-	if ok:
+	if st["ok"]:
 		print("[achievements] ALL PASS (artworks=%d achievements=%d/%d)" % [
 			SkinCatalog.ARTWORKS.size(), SkinCatalog.ACHIEVEMENTS.size(), SkinCatalog.ACHIEVEMENTS.size()
 		])
