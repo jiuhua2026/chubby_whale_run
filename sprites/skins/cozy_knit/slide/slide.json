@@ -1,0 +1,210 @@
+{
+  "action": "slide",
+  "source": "cozy_slide_clean_rgba.png",
+  "sourceSize": [
+    2048,
+    2048
+  ],
+  "sourceScale": 3.08,
+  "normalizedScale": 1.0,
+  "resampleFactor": 0.324675,
+  "fps": 12,
+  "colorMatch": {
+    "method": "histogram_specification(RGB→HSV-SV)",
+    "reference": "run",
+    "svRefine": true
+  },
+  "anchorNote": "anchorX 逐帧取头部区域水平中心；anchorY 逐帧取轮廓最低点（脚底） —— 两轴都归一化，帧内排版位移全部归零",
+  "bands": [
+    {
+      "index": 0,
+      "y": [
+        416,
+        810
+      ],
+      "anchorY": 262.99,
+      "frames": 5
+    },
+    {
+      "index": 1,
+      "y": [
+        1185,
+        1583
+      ],
+      "anchorY": 513.96,
+      "frames": 5
+    }
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "band": 0,
+      "file": "slide_00.png",
+      "w": 118,
+      "h": 124,
+      "anchorX": 61.04,
+      "anchorY": 124.03,
+      "anchorYBand": 127.92,
+      "srcBbox": [
+        23,
+        416,
+        385,
+        798
+      ],
+      "srcCx": 211.0
+    },
+    {
+      "index": 1,
+      "band": 0,
+      "file": "slide_01.png",
+      "w": 129,
+      "h": 95,
+      "anchorX": 72.24,
+      "anchorY": 94.81,
+      "anchorYBand": 102.27,
+      "srcBbox": [
+        403,
+        495,
+        800,
+        787
+      ],
+      "srcCx": 625.5
+    },
+    {
+      "index": 2,
+      "band": 0,
+      "file": "slide_02.png",
+      "w": 117,
+      "h": 90,
+      "anchorX": 61.69,
+      "anchorY": 89.94,
+      "anchorYBand": 89.94,
+      "srcBbox": [
+        854,
+        533,
+        1212,
+        810
+      ],
+      "srcCx": 1044.0
+    },
+    {
+      "index": 3,
+      "band": 0,
+      "file": "slide_03.png",
+      "w": 113,
+      "h": 92,
+      "anchorX": 58.77,
+      "anchorY": 91.56,
+      "anchorYBand": 93.51,
+      "srcBbox": [
+        1280,
+        522,
+        1626,
+        804
+      ],
+      "srcCx": 1461.0
+    },
+    {
+      "index": 4,
+      "band": 0,
+      "file": "slide_04.png",
+      "w": 113,
+      "h": 92,
+      "anchorX": 58.93,
+      "anchorY": 91.88,
+      "anchorYBand": 91.88,
+      "srcBbox": [
+        1679,
+        527,
+        2025,
+        810
+      ],
+      "srcCx": 1860.5
+    },
+    {
+      "index": 5,
+      "band": 1,
+      "file": "slide_05.png",
+      "w": 128,
+      "h": 97,
+      "anchorX": 70.29,
+      "anchorY": 97.08,
+      "anchorYBand": 105.84,
+      "srcBbox": [
+        28,
+        1257,
+        421,
+        1556
+      ],
+      "srcCx": 244.5
+    },
+    {
+      "index": 6,
+      "band": 1,
+      "file": "slide_06.png",
+      "w": 120,
+      "h": 112,
+      "anchorX": 64.29,
+      "anchorY": 112.01,
+      "anchorYBand": 117.86,
+      "srcBbox": [
+        472,
+        1220,
+        841,
+        1565
+      ],
+      "srcCx": 670.0
+    },
+    {
+      "index": 7,
+      "band": 1,
+      "file": "slide_07.png",
+      "w": 109,
+      "h": 126,
+      "anchorX": 58.44,
+      "anchorY": 125.32,
+      "anchorYBand": 126.3,
+      "srcBbox": [
+        891,
+        1194,
+        1226,
+        1580
+      ],
+      "srcCx": 1071.0
+    },
+    {
+      "index": 8,
+      "band": 1,
+      "file": "slide_08.png",
+      "w": 102,
+      "h": 130,
+      "anchorX": 53.57,
+      "anchorY": 129.22,
+      "anchorYBand": 129.22,
+      "srcBbox": [
+        1279,
+        1185,
+        1591,
+        1583
+      ],
+      "srcCx": 1444.0
+    },
+    {
+      "index": 9,
+      "band": 1,
+      "file": "slide_09.png",
+      "w": 110,
+      "h": 124,
+      "anchorX": 60.23,
+      "anchorY": 123.7,
+      "anchorYBand": 123.7,
+      "srcBbox": [
+        1669,
+        1202,
+        2007,
+        1583
+      ],
+      "srcCx": 1854.5
+    }
+  ]
+}

@@ -1162,6 +1162,10 @@ func _run_achievements_demo() -> void:
 	if SkinCatalog.ACHIEVEMENTS.size() != 15:
 		fail.call("成就总数应为 15，实际=%d" % SkinCatalog.ACHIEVEMENTS.size())
 
+	# 1b. 未解锁时不得装备 cozy_knit
+	if Progress.set_equipped_skin("cozy_knit"):
+		fail.call("未解锁 初潜突围 时不应允许装备 cozy_knit")
+
 	# 2. 练习模式下跑动 / 擦身 / 冲刺 / 追击 / 死亡不能计入正式成就
 	GameState.start_run(GameState.Mode.PRACTICE)
 	GameState.add_distance(1600.0 * 64.0)
@@ -1237,7 +1241,15 @@ func _run_achievements_demo() -> void:
 	if Progress.unlocked_achievement_count() != SkinCatalog.ACHIEVEMENTS.size():
 		fail.call("全部 15 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
 
-	# 5. UI 面板（主菜单 3 成就打开与 ESC 关闭 + 4 设置不再含重复成就行）
+	# 5. UI 面板与换装校验（验证切换到 cozy_knit 后 8/10/10 帧可正常加载）
+	if not Progress.set_equipped_skin("cozy_knit"):
+		fail.call("解锁 初潜突围 后应可装备 cozy_knit")
+	if not player._anim.loaded \
+			or player._anim.frame_count("run") != 8 \
+			or player._anim.frame_count("jump") != 10 \
+			or player._anim.frame_count("slide") != 10:
+		fail.call("cozy_knit 皮肤动作帧加载异常")
+	Progress.set_equipped_skin("default")
 	GameState.to_menu()
 	await get_tree().process_frame
 	menu._choose(2) # 成就

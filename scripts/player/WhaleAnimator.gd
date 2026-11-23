@@ -22,6 +22,7 @@ var load_errors: Array[String] = []
 
 var _sprite: Sprite2D
 var _scale := 1.0
+var _skin_id := "default"
 var _action := ""
 var _index := 0.0
 var _time_acc := 0.0
@@ -34,20 +35,37 @@ var last_fps := 0.0
 var last_fps_raw := 0.0
 
 
-func setup(sprite: Sprite2D, char_scale: float) -> void:
+func setup(sprite: Sprite2D, char_scale: float, skin_id: String = "default") -> void:
 	_sprite = sprite
 	_scale = char_scale
+	_skin_id = skin_id if SkinCatalog.is_skin_playable(skin_id) else "default"
 	_sprite.scale = Vector2(_scale, _scale)
 	load_all()
+
+
+func set_skin(skin_id: String) -> void:
+	var target := skin_id if SkinCatalog.is_skin_playable(skin_id) else "default"
+	if target == _skin_id and loaded:
+		return
+	_skin_id = target
+	load_all()
+	if _action != "" and has_clip(_action):
+		_index = 0.0
+		_time_acc = 0.0
+		_apply(0)
 
 
 func load_all() -> void:
 	clips.clear()
 	clip_h_med.clear()
 	load_errors.clear()
+	var skin_base := SkinCatalog.get_artwork_sprite_dir(_skin_id)
 	for a in ACTIONS:
-		var dir_path := "%s/%s" % [BASE, a]
+		var dir_path := "%s/%s" % [skin_base, a]
 		var json_path := "%s/%s.json" % [dir_path, a]
+		if not FileAccess.file_exists(json_path) and skin_base != BASE:
+			dir_path = "%s/%s" % [BASE, a]
+			json_path = "%s/%s.json" % [dir_path, a]
 		if not FileAccess.file_exists(json_path):
 			load_errors.append("缺少 %s" % json_path)
 			continue

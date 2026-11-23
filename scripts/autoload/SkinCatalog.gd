@@ -11,12 +11,16 @@ const ARTWORKS := [
 		"name": "深海女仆",
 		"desc": "经典蓝白女仆装，轻灵畅游深海的初始伙伴。",
 		"preview": "res://sprites/skins/default/preview.png",
+		"playable": true,
+		"sprite_dir": "res://sprites",
 	},
 	{
 		"id": "cozy_knit",
 		"name": "暖冬针织",
 		"desc": "米白麻花毛衣搭配鲸鱼小挎包，温暖柔软的冬日私服。",
 		"preview": "res://sprites/skins/cozy_knit/preview.png",
+		"playable": true,
+		"sprite_dir": "res://sprites/skins/cozy_knit",
 	},
 	{
 		"id": "snow_cloak",
@@ -198,6 +202,17 @@ static func get_artwork(art_id: String) -> Dictionary:
 		if String(a["id"]) == art_id:
 			return a
 	return ARTWORKS[0]
+
+
+static func is_skin_playable(art_id: String) -> bool:
+	return bool(get_artwork(art_id).get("playable", false))
+
+
+static func get_artwork_sprite_dir(art_id: String) -> String:
+	var art := get_artwork(art_id)
+	if not bool(art.get("playable", false)):
+		return "res://sprites"
+	return String(art.get("sprite_dir", "res://sprites"))
 
 
 static func get_achievement(ach_id: String) -> Dictionary:

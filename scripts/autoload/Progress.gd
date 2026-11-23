@@ -5,11 +5,13 @@ extends Node
 ## 仅在 `GameState.mode == NORMAL` 且非自动化测试（`save_enabled`）时统计与写盘。
 
 signal achievement_unlocked(ach: Dictionary, art_id: String)
+signal skin_changed(skin_id: String)
 
 const PATH := "user://progress.cfg"
 
 var save_enabled := true
 
+var equipped_skin := "default"
 var unlocked_achievements := {}
 
 var stats := {
@@ -68,18 +70,23 @@ func load_progress() -> void:
 	for k: String in stats.keys():
 		stats[k] = maxi(0, int(cf.get_value("stats", k, 0)))
 
+	var eq := String(cf.get_value("skins", "equipped", "default"))
+	equipped_skin = eq if is_skin_unlocked(eq) else "default"
+
 
 func save_progress() -> void:
 	if not save_enabled or not Settings.record_save_enabled:
 		return
 	var cf := ConfigFile.new()
 	cf.set_value("achievements", "unlocked", unlocked_achievements.keys())
+	cf.set_value("skins", "equipped", equipped_skin)
 	for k: String in stats.keys():
 		cf.set_value("stats", k, int(stats[k]))
 	cf.save(PATH)
 
 
 func _reset_in_memory() -> void:
+	equipped_skin = "default"
 	unlocked_achievements = {}
 	for k: String in stats.keys():
 		stats[k] = 0
@@ -105,6 +112,28 @@ func end_test_sandbox() -> void:
 # ---------------------------------------------------------------- 成就查询
 func is_achievement_unlocked(ach_id: String) -> bool:
 	return unlocked_achievements.get(ach_id, false)
+
+
+func is_skin_unlocked(skin_id: String) -> bool:
+	if skin_id == "default":
+		return true
+	if not SkinCatalog.is_skin_playable(skin_id):
+		return false
+	for ach: Dictionary in SkinCatalog.ACHIEVEMENTS:
+		if String(ach.get("reward_art", "")) == skin_id:
+			return is_achievement_unlocked(String(ach["id"]))
+	return false
+
+
+func set_equipped_skin(skin_id: String) -> bool:
+	if not is_skin_unlocked(skin_id):
+		return false
+	if equipped_skin == skin_id:
+		return true
+	equipped_skin = skin_id
+	save_progress()
+	skin_changed.emit(equipped_skin)
+	return true
 
 
 func unlocked_achievement_count() -> int:

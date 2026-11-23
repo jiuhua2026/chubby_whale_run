@@ -93,9 +93,11 @@ func _ready() -> void:
 	_set_stand_shape()
 
 	_anim = WhaleAnimator.new()
-	_anim.setup(_sprite, GameConfig.CHARACTER_SCALE)
+	_anim.setup(_sprite, GameConfig.CHARACTER_SCALE, Progress.equipped_skin)
 	if not _anim.loaded:
 		push_error("[Player] 鲸鱼娘帧序列加载失败，检查 sprites/ 目录")
+	if not Progress.skin_changed.is_connected(_on_skin_changed):
+		Progress.skin_changed.connect(_on_skin_changed)
 
 	speed = GameConfig.run_speed_start
 
@@ -548,6 +550,15 @@ func dash_ratio() -> float:
 
 func is_dashing() -> bool:
 	return _dash_t > 0.0
+
+
+func _on_skin_changed(skin_id: String) -> void:
+	if _anim == null:
+		return
+	_anim.set_skin(skin_id)
+	var cur := _anim.current_action()
+	if cur != "":
+		_anim.play(cur, 0.0, 12.0, 0)
 
 
 func kill(reason: String) -> void:

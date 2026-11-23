@@ -1,0 +1,172 @@
+{
+  "action": "run",
+  "source": "cozy_run_clean_rgba.png",
+  "sourceSize": [
+    2048,
+    2048
+  ],
+  "sourceScale": 4.18,
+  "normalizedScale": 1.0,
+  "resampleFactor": 0.239234,
+  "fps": 12,
+  "colorMatch": null,
+  "anchorNote": "anchorX 逐帧取头部区域水平中心；anchorY 逐帧取轮廓最低点（脚底） —— 两轴都归一化，帧内排版位移全部归零",
+  "bands": [
+    {
+      "index": 0,
+      "y": [
+        204,
+        782
+      ],
+      "anchorY": 187.08,
+      "frames": 4
+    },
+    {
+      "index": 1,
+      "y": [
+        1174,
+        1716
+      ],
+      "anchorY": 410.53,
+      "frames": 4
+    }
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "band": 0,
+      "file": "run_00.png",
+      "w": 113,
+      "h": 138,
+      "anchorX": 61.24,
+      "anchorY": 137.56,
+      "anchorYBand": 138.28,
+      "srcBbox": [
+        24,
+        204,
+        494,
+        779
+      ],
+      "srcCx": 280.0
+    },
+    {
+      "index": 1,
+      "band": 0,
+      "file": "run_01.png",
+      "w": 114,
+      "h": 137,
+      "anchorX": 60.29,
+      "anchorY": 136.36,
+      "anchorYBand": 136.36,
+      "srcBbox": [
+        531,
+        212,
+        1006,
+        782
+      ],
+      "srcCx": 783.0
+    },
+    {
+      "index": 2,
+      "band": 0,
+      "file": "run_02.png",
+      "w": 110,
+      "h": 138,
+      "anchorX": 60.29,
+      "anchorY": 137.8,
+      "anchorYBand": 137.8,
+      "srcBbox": [
+        1057,
+        206,
+        1517,
+        782
+      ],
+      "srcCx": 1309.0
+    },
+    {
+      "index": 3,
+      "band": 0,
+      "file": "run_03.png",
+      "w": 111,
+      "h": 138,
+      "anchorX": 58.97,
+      "anchorY": 137.56,
+      "anchorYBand": 137.8,
+      "srcBbox": [
+        1562,
+        206,
+        2024,
+        781
+      ],
+      "srcCx": 1808.5
+    },
+    {
+      "index": 4,
+      "band": 1,
+      "file": "run_04.png",
+      "w": 112,
+      "h": 130,
+      "anchorX": 62.2,
+      "anchorY": 129.43,
+      "anchorYBand": 129.67,
+      "srcBbox": [
+        24,
+        1174,
+        493,
+        1715
+      ],
+      "srcCx": 284.0
+    },
+    {
+      "index": 5,
+      "band": 1,
+      "file": "run_05.png",
+      "w": 111,
+      "h": 129,
+      "anchorX": 61.96,
+      "anchorY": 128.71,
+      "anchorYBand": 128.95,
+      "srcBbox": [
+        545,
+        1177,
+        1007,
+        1715
+      ],
+      "srcCx": 804.0
+    },
+    {
+      "index": 6,
+      "band": 1,
+      "file": "run_06.png",
+      "w": 110,
+      "h": 130,
+      "anchorX": 64.59,
+      "anchorY": 129.43,
+      "anchorYBand": 129.67,
+      "srcBbox": [
+        1058,
+        1174,
+        1517,
+        1715
+      ],
+      "srcCx": 1328.0
+    },
+    {
+      "index": 7,
+      "band": 1,
+      "file": "run_07.png",
+      "w": 108,
+      "h": 129,
+      "anchorX": 64.0,
+      "anchorY": 129.19,
+      "anchorYBand": 129.19,
+      "srcBbox": [
+        1572,
+        1176,
+        2024,
+        1716
+      ],
+      "srcCx": 1839.5
+    }
+  ]
+}

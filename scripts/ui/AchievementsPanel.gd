@@ -34,6 +34,8 @@ var _cond_lbl: Label
 var _bar_bg: ColorRect
 var _bar_fill: ColorRect
 var _prog_lbl: Label
+var _equip_btn: Button
+var _equip_skin_id := ""
 var _bubbles: Array[Dictionary] = []
 var _tex_cache := {}
 
@@ -389,7 +391,16 @@ func _ready() -> void:
 	_prog_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	prog_hb.add_child(_prog_lbl)
 
-	var hint := _mk("↑↓ / 点击 切换查看　ESC 返回主菜单", 13, Color(0.56, 0.70, 0.84), 2)
+	_equip_btn = Button.new()
+	_equip_btn.custom_minimum_size = Vector2(220, 34)
+	_equip_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_equip_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_equip_btn.focus_mode = Control.FOCUS_NONE
+	_equip_btn.add_theme_font_size_override("font_size", 14)
+	_equip_btn.pressed.connect(_on_equip_pressed)
+	right_col.add_child(_equip_btn)
+
+	var hint := _mk("↑↓ / 点击 切换查看　E / 点击按钮 切换出战形象　ESC 返回主菜单", 13, Color(0.56, 0.70, 0.84), 2)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	root_vb.add_child(hint)
 
@@ -463,11 +474,14 @@ func refresh() -> void:
 				Color(0.86, 0.94, 1.0) if unlocked else Color(0.56, 0.68, 0.80))
 
 		if e["kind"] == "base":
-			_list_tags[i].text = "初始纪念"
+			_list_tags[i].text = "出战中" if Progress.equipped_skin == "default" else "初始纪念"
 			_list_tags[i].add_theme_color_override("font_color", Color(0.52, 0.94, 0.68))
 		elif unlocked:
-			_list_tags[i].text = "已解锁"
-			_list_tags[i].add_theme_color_override("font_color", Color(1.0, 0.86, 0.48))
+			var eid := String(e["art_id"])
+			var is_equipped_skin := SkinCatalog.is_skin_playable(eid) and Progress.equipped_skin == eid
+			_list_tags[i].text = "出战中" if is_equipped_skin else "已解锁"
+			_list_tags[i].add_theme_color_override("font_color",
+				Color(0.52, 0.94, 0.68) if is_equipped_skin else Color(1.0, 0.86, 0.48))
 		else:
 			_list_tags[i].text = String(e["tag"]) + " · 锁"
 			_list_tags[i].add_theme_color_override("font_color", Color(0.54, 0.66, 0.78))
@@ -484,16 +498,17 @@ func refresh() -> void:
 	if cur["kind"] == "base":
 		_preview_rect.material = null
 		_lock_stamp.visible = false
-		_badge_lbl.text = "初始同伴 · 纪念画片"
+		_badge_lbl.text = "初始同伴 · 可换装"
 		_badge_lbl.add_theme_color_override("font_color", Color(0.56, 0.96, 0.70))
 		bsb.border_color = Color(0.42, 0.86, 0.62, 0.85)
 		_art_title.text = String(art["name"])
 		_art_desc.text = String(art["desc"])
-		_cond_lbl.text = "解锁条件：初始默认自带（局内始终以经典深海女仆出战）"
+		_cond_lbl.text = "解锁条件：初始默认自带（支持在此换上此形象出战）"
 		_bar_fill.anchor_right = 1.0
 		_bar_fill.color = Color(0.46, 0.92, 0.64, 0.98)
 		_prog_lbl.text = "已收集"
 		_prog_lbl.add_theme_color_override("font_color", Color(0.52, 0.96, 0.70))
+		_update_equip_button("default", true)
 		if _left_scroll != null and _sel >= 0 and _sel < _list_panels.size():
 			_left_scroll.ensure_control_visible.call_deferred(_list_panels[_sel])
 		return
@@ -530,8 +545,58 @@ func refresh() -> void:
 	_cond_lbl.text = "达成条件：%s" % String(ach["desc"])
 	_bar_fill.anchor_right = float(pr["ratio"])
 	_prog_lbl.text = String(pr["text"])
+	var reward_id := String(ach.get("reward_art", ""))
+	_update_equip_button(reward_id, done)
 	if _left_scroll != null and _sel >= 0 and _sel < _list_panels.size():
 		_left_scroll.ensure_control_visible.call_deferred(_list_panels[_sel])
+
+
+func _update_equip_button(skin_id: String, unlocked: bool) -> void:
+	if _equip_btn == null:
+		return
+	if skin_id == "" or not SkinCatalog.is_skin_playable(skin_id):
+		_equip_btn.visible = false
+		_equip_skin_id = ""
+		return
+	_equip_btn.visible = true
+	_equip_skin_id = skin_id
+	var sb := StyleBoxFlat.new()
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	if not unlocked:
+		_equip_btn.disabled = true
+		_equip_btn.text = "未解锁（达成后可穿戴）"
+		sb.bg_color = Color(0.06, 0.11, 0.18, 0.75)
+		sb.border_color = Color(0.28, 0.42, 0.56, 0.55)
+		_equip_btn.add_theme_color_override("font_disabled_color", Color(0.55, 0.68, 0.80))
+	elif Progress.equipped_skin == skin_id:
+		_equip_btn.disabled = true
+		_equip_btn.text = "✓ 当前出战形象"
+		sb.bg_color = Color(0.08, 0.24, 0.18, 0.90)
+		sb.border_color = Color(0.45, 0.92, 0.65, 0.90)
+		_equip_btn.add_theme_color_override("font_disabled_color", Color(0.56, 0.96, 0.72))
+	else:
+		_equip_btn.disabled = false
+		_equip_btn.text = "换上此形象（点击 / E）"
+		sb.bg_color = Color(0.14, 0.25, 0.40, 0.96)
+		sb.border_color = Color(1.0, 0.85, 0.45, 0.95)
+		_equip_btn.add_theme_color_override("font_color", Color(1.0, 0.90, 0.56))
+	_equip_btn.add_theme_stylebox_override("normal", sb)
+	_equip_btn.add_theme_stylebox_override("hover", sb)
+	_equip_btn.add_theme_stylebox_override("pressed", sb)
+	_equip_btn.add_theme_stylebox_override("disabled", sb)
+
+
+func _on_equip_pressed() -> void:
+	if _equip_skin_id == "":
+		return
+	if Progress.set_equipped_skin(_equip_skin_id):
+		AudioManager.play_sfx("ui_confirm", 0.0)
+		refresh()
 
 
 func _on_item_hover(i: int) -> void:
@@ -567,6 +632,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		refresh()
 		AudioManager.play_sfx("ui_move", -2.0)
 		get_viewport().set_input_as_handled()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		if _equip_btn != null and _equip_btn.visible and not _equip_btn.disabled:
+			_on_equip_pressed()
+			get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("back_to_menu") or event.is_action_pressed("menu_confirm"):
 		close()
 		get_viewport().set_input_as_handled()
