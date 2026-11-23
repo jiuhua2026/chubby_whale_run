@@ -1,6 +1,6 @@
 {
   "action": "jump",
-  "source": "cozy_jump_clean_rgba.png",
+  "source": "cozy_jump_ahoge_fixed.png",
   "sourceSize": [
     2048,
     2048
@@ -19,7 +19,7 @@
     {
       "index": 0,
       "y": [
-        219,
+        218,
         789
       ],
       "anchorY": 193.38,
@@ -28,7 +28,7 @@
     {
       "index": 1,
       "y": [
-        1121,
+        1118,
         1734
       ],
       "anchorY": 425.0,
@@ -41,13 +41,13 @@
       "band": 0,
       "file": "jump_00.png",
       "w": 88,
-      "h": 106,
+      "h": 108,
       "anchorX": 48.5,
-      "anchorY": 105.88,
-      "anchorYBand": 105.88,
+      "anchorY": 107.6,
+      "anchorYBand": 107.6,
       "srcBbox": [
         28,
-        357,
+        350,
         387,
         789
       ],
@@ -58,13 +58,13 @@
       "band": 0,
       "file": "jump_01.png",
       "w": 90,
-      "h": 124,
+      "h": 125,
       "anchorX": 50.5,
-      "anchorY": 123.28,
-      "anchorYBand": 124.02,
+      "anchorY": 124.75,
+      "anchorYBand": 125.49,
       "srcBbox": [
         416,
-        283,
+        277,
         783,
         786
       ],
@@ -77,11 +77,11 @@
       "w": 87,
       "h": 131,
       "anchorX": 46.5,
-      "anchorY": 130.39,
-      "anchorYBand": 139.71,
+      "anchorY": 130.64,
+      "anchorYBand": 139.95,
       "srcBbox": [
         827,
-        219,
+        218,
         1181,
         751
       ],
@@ -94,11 +94,11 @@
       "w": 84,
       "h": 116,
       "anchorX": 44.5,
-      "anchorY": 115.93,
-      "anchorYBand": 131.86,
+      "anchorY": 116.18,
+      "anchorYBand": 132.11,
       "srcBbox": [
         1226,
-        251,
+        250,
         1568,
         724
       ],
@@ -128,11 +128,11 @@
       "w": 85,
       "h": 143,
       "anchorX": 45.5,
-      "anchorY": 142.4,
-      "anchorYBand": 150.25,
+      "anchorY": 143.14,
+      "anchorYBand": 150.98,
       "srcBbox": [
         26,
-        1121,
+        1118,
         372,
         1702
       ],
@@ -143,13 +143,13 @@
       "band": 1,
       "file": "jump_06.png",
       "w": 86,
-      "h": 143,
+      "h": 144,
       "anchorX": 46.5,
-      "anchorY": 142.89,
-      "anchorYBand": 150.25,
+      "anchorY": 143.63,
+      "anchorYBand": 150.98,
       "srcBbox": [
         419,
-        1121,
+        1118,
         769,
         1704
       ],
@@ -160,17 +160,17 @@
       "band": 1,
       "file": "jump_07.png",
       "w": 90,
-      "h": 126,
+      "h": 128,
       "anchorX": 50.5,
-      "anchorY": 126.23,
-      "anchorYBand": 126.47,
+      "anchorY": 127.94,
+      "anchorYBand": 128.19,
       "srcBbox": [
         826,
-        1218,
+        1211,
         1191,
         1733
       ],
-      "srcCx": 1010.0
+      "srcCx": 1010.5
     },
     {
       "index": 8,
@@ -179,11 +179,11 @@
       "w": 88,
       "h": 115,
       "anchorX": 48.5,
-      "anchorY": 114.71,
-      "anchorYBand": 114.95,
+      "anchorY": 115.2,
+      "anchorYBand": 115.44,
       "srcBbox": [
         1238,
-        1265,
+        1263,
         1597,
         1733
       ],
@@ -196,11 +196,11 @@
       "w": 85,
       "h": 134,
       "anchorX": 45.5,
-      "anchorY": 133.82,
-      "anchorYBand": 133.82,
+      "anchorY": 134.07,
+      "anchorYBand": 134.07,
       "srcBbox": [
         1655,
-        1188,
+        1187,
         2000,
         1734
       ],

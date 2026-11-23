@@ -1,6 +1,6 @@
 {
   "action": "run",
-  "source": "cozy_run_v2_rgba.png",
+  "source": "cozy_run_final.png",
   "sourceSize": [
     2048,
     2048
@@ -15,7 +15,7 @@
     {
       "index": 0,
       "y": [
-        204,
+        207,
         782
       ],
       "anchorY": 187.08,
@@ -24,10 +24,10 @@
     {
       "index": 1,
       "y": [
-        1174,
-        1716
+        1172,
+        1748
       ],
-      "anchorY": 410.53,
+      "anchorY": 418.18,
       "frames": 4
     }
   ],
@@ -37,13 +37,13 @@
       "band": 0,
       "file": "run_00.png",
       "w": 113,
-      "h": 138,
+      "h": 137,
       "anchorX": 70.5,
-      "anchorY": 137.5,
-      "anchorYBand": 138.28,
+      "anchorY": 136.5,
+      "anchorYBand": 137.56,
       "srcBbox": [
         24,
-        204,
+        207,
         494,
         779
       ],
@@ -54,13 +54,13 @@
       "band": 0,
       "file": "run_01.png",
       "w": 114,
-      "h": 137,
+      "h": 136,
       "anchorX": 71.5,
-      "anchorY": 136.5,
-      "anchorYBand": 136.36,
+      "anchorY": 135.5,
+      "anchorYBand": 135.89,
       "srcBbox": [
         531,
-        212,
+        214,
         1006,
         782
       ],
@@ -72,12 +72,12 @@
       "file": "run_02.png",
       "w": 110,
       "h": 138,
-      "anchorX": 68.5,
+      "anchorX": 67.5,
       "anchorY": 137.5,
-      "anchorYBand": 137.8,
+      "anchorYBand": 137.56,
       "srcBbox": [
         1057,
-        206,
+        207,
         1517,
         782
       ],
@@ -88,85 +88,85 @@
       "band": 0,
       "file": "run_03.png",
       "w": 111,
-      "h": 138,
-      "anchorX": 69.5,
-      "anchorY": 137.5,
-      "anchorYBand": 137.8,
+      "h": 137,
+      "anchorX": 68.5,
+      "anchorY": 136.5,
+      "anchorYBand": 137.32,
       "srcBbox": [
         1562,
-        206,
+        208,
         2024,
         781
       ],
-      "srcCx": 1808.5
+      "srcCx": 1808.0
     },
     {
       "index": 4,
       "band": 1,
       "file": "run_04.png",
       "w": 112,
-      "h": 130,
-      "anchorX": 70.5,
-      "anchorY": 136.3,
-      "anchorYBand": 129.67,
+      "h": 137,
+      "anchorX": 69.5,
+      "anchorY": 136.5,
+      "anchorYBand": 136.84,
       "srcBbox": [
         24,
-        1174,
+        1176,
         493,
-        1715
+        1748
       ],
-      "srcCx": 284.0
+      "srcCx": 278.0
     },
     {
       "index": 5,
       "band": 1,
       "file": "run_05.png",
       "w": 111,
-      "h": 129,
-      "anchorX": 69.5,
-      "anchorY": 136.3,
-      "anchorYBand": 128.95,
+      "h": 136,
+      "anchorX": 68.5,
+      "anchorY": 135.5,
+      "anchorYBand": 136.6,
       "srcBbox": [
         545,
         1177,
         1007,
-        1715
+        1746
       ],
-      "srcCx": 804.0
+      "srcCx": 799.5
     },
     {
       "index": 6,
       "band": 1,
       "file": "run_06.png",
       "w": 110,
-      "h": 130,
-      "anchorX": 68.5,
-      "anchorY": 136.8,
-      "anchorYBand": 129.67,
+      "h": 138,
+      "anchorX": 67.5,
+      "anchorY": 137.5,
+      "anchorYBand": 137.8,
       "srcBbox": [
         1058,
-        1174,
+        1172,
         1517,
-        1715
+        1746
       ],
-      "srcCx": 1328.0
+      "srcCx": 1311.0
     },
     {
       "index": 7,
       "band": 1,
       "file": "run_07.png",
       "w": 108,
-      "h": 129,
-      "anchorX": 66.5,
-      "anchorY": 135.3,
-      "anchorYBand": 129.19,
+      "h": 137,
+      "anchorX": 65.5,
+      "anchorY": 136.5,
+      "anchorYBand": 137.32,
       "srcBbox": [
         1572,
-        1176,
+        1174,
         2024,
-        1716
+        1745
       ],
-      "srcCx": 1839.5
+      "srcCx": 1825.0
     }
   ],
   "uniformHeight": false

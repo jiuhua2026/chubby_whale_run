@@ -1,6 +1,6 @@
 {
   "action": "slide",
-  "source": "cozy_slide_v2_rgba.png",
+  "source": "cozy_slide_ahoge_fixed.png",
   "sourceSize": [
     2048,
     2048
@@ -19,7 +19,7 @@
     {
       "index": 0,
       "y": [
-        416,
+        423,
         810
       ],
       "anchorY": 262.99,
@@ -41,17 +41,17 @@
       "band": 0,
       "file": "slide_00.png",
       "w": 118,
-      "h": 124,
+      "h": 122,
       "anchorX": 77.5,
-      "anchorY": 124.03,
-      "anchorYBand": 127.92,
+      "anchorY": 121.75,
+      "anchorYBand": 125.65,
       "srcBbox": [
         23,
-        416,
+        423,
         385,
         798
       ],
-      "srcCx": 211.0
+      "srcCx": 210.5
     },
     {
       "index": 1,
@@ -60,15 +60,15 @@
       "w": 129,
       "h": 95,
       "anchorX": 84.0,
-      "anchorY": 94.81,
-      "anchorYBand": 102.27,
+      "anchorY": 94.48,
+      "anchorYBand": 101.95,
       "srcBbox": [
         403,
-        495,
+        496,
         800,
         787
       ],
-      "srcCx": 625.5
+      "srcCx": 626.0
     },
     {
       "index": 2,
@@ -94,11 +94,11 @@
       "w": 113,
       "h": 92,
       "anchorX": 68.0,
-      "anchorY": 91.56,
-      "anchorYBand": 93.51,
+      "anchorY": 91.88,
+      "anchorYBand": 93.83,
       "srcBbox": [
         1280,
-        522,
+        521,
         1626,
         804
       ],
@@ -109,13 +109,13 @@
       "band": 0,
       "file": "slide_04.png",
       "w": 113,
-      "h": 92,
+      "h": 93,
       "anchorX": 68.0,
-      "anchorY": 91.88,
-      "anchorYBand": 91.88,
+      "anchorY": 92.21,
+      "anchorYBand": 92.21,
       "srcBbox": [
         1679,
-        527,
+        526,
         2025,
         810
       ],
@@ -128,28 +128,28 @@
       "w": 128,
       "h": 97,
       "anchorX": 83.0,
-      "anchorY": 97.08,
-      "anchorYBand": 105.84,
+      "anchorY": 96.43,
+      "anchorYBand": 105.19,
       "srcBbox": [
         28,
-        1257,
+        1259,
         421,
         1556
       ],
-      "srcCx": 244.5
+      "srcCx": 244.0
     },
     {
       "index": 6,
       "band": 1,
       "file": "slide_06.png",
       "w": 120,
-      "h": 112,
-      "anchorX": 78.5,
-      "anchorY": 112.01,
-      "anchorYBand": 117.86,
+      "h": 111,
+      "anchorX": 79.5,
+      "anchorY": 110.71,
+      "anchorYBand": 116.56,
       "srcBbox": [
         472,
-        1220,
+        1224,
         841,
         1565
       ],
@@ -160,17 +160,17 @@
       "band": 1,
       "file": "slide_07.png",
       "w": 109,
-      "h": 126,
+      "h": 125,
       "anchorX": 67.5,
-      "anchorY": 125.32,
-      "anchorYBand": 126.3,
+      "anchorY": 124.35,
+      "anchorYBand": 125.32,
       "srcBbox": [
         891,
-        1194,
+        1197,
         1226,
         1580
       ],
-      "srcCx": 1071.0
+      "srcCx": 1070.5
     },
     {
       "index": 8,
