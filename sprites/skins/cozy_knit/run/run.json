@@ -1,6 +1,6 @@
 {
   "action": "run",
-  "source": "cozy_run_clean_rgba.png",
+  "source": "cozy_run_v2_rgba.png",
   "sourceSize": [
     2048,
     2048
@@ -38,8 +38,8 @@
       "file": "run_00.png",
       "w": 113,
       "h": 138,
-      "anchorX": 61.24,
-      "anchorY": 137.56,
+      "anchorX": 70.5,
+      "anchorY": 137.5,
       "anchorYBand": 138.28,
       "srcBbox": [
         24,
@@ -55,8 +55,8 @@
       "file": "run_01.png",
       "w": 114,
       "h": 137,
-      "anchorX": 60.29,
-      "anchorY": 136.36,
+      "anchorX": 71.5,
+      "anchorY": 136.5,
       "anchorYBand": 136.36,
       "srcBbox": [
         531,
@@ -72,8 +72,8 @@
       "file": "run_02.png",
       "w": 110,
       "h": 138,
-      "anchorX": 60.29,
-      "anchorY": 137.8,
+      "anchorX": 68.5,
+      "anchorY": 137.5,
       "anchorYBand": 137.8,
       "srcBbox": [
         1057,
@@ -89,8 +89,8 @@
       "file": "run_03.png",
       "w": 111,
       "h": 138,
-      "anchorX": 58.97,
-      "anchorY": 137.56,
+      "anchorX": 69.5,
+      "anchorY": 137.5,
       "anchorYBand": 137.8,
       "srcBbox": [
         1562,
@@ -106,8 +106,8 @@
       "file": "run_04.png",
       "w": 112,
       "h": 130,
-      "anchorX": 62.2,
-      "anchorY": 129.43,
+      "anchorX": 70.5,
+      "anchorY": 136.3,
       "anchorYBand": 129.67,
       "srcBbox": [
         24,
@@ -123,8 +123,8 @@
       "file": "run_05.png",
       "w": 111,
       "h": 129,
-      "anchorX": 61.96,
-      "anchorY": 128.71,
+      "anchorX": 69.5,
+      "anchorY": 136.3,
       "anchorYBand": 128.95,
       "srcBbox": [
         545,
@@ -140,8 +140,8 @@
       "file": "run_06.png",
       "w": 110,
       "h": 130,
-      "anchorX": 64.59,
-      "anchorY": 129.43,
+      "anchorX": 68.5,
+      "anchorY": 136.8,
       "anchorYBand": 129.67,
       "srcBbox": [
         1058,
@@ -157,8 +157,8 @@
       "file": "run_07.png",
       "w": 108,
       "h": 129,
-      "anchorX": 64.0,
-      "anchorY": 129.19,
+      "anchorX": 66.5,
+      "anchorY": 135.3,
       "anchorYBand": 129.19,
       "srcBbox": [
         1572,
@@ -168,5 +168,6 @@
       ],
       "srcCx": 1839.5
     }
-  ]
+  ],
+  "uniformHeight": false
 }

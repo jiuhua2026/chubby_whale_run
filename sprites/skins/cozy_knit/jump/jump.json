@@ -42,7 +42,7 @@
       "file": "jump_00.png",
       "w": 88,
       "h": 106,
-      "anchorX": 49.26,
+      "anchorX": 48.5,
       "anchorY": 105.88,
       "anchorYBand": 105.88,
       "srcBbox": [
@@ -59,7 +59,7 @@
       "file": "jump_01.png",
       "w": 90,
       "h": 124,
-      "anchorX": 51.59,
+      "anchorX": 50.5,
       "anchorY": 123.28,
       "anchorYBand": 124.02,
       "srcBbox": [
@@ -76,7 +76,7 @@
       "file": "jump_02.png",
       "w": 87,
       "h": 131,
-      "anchorX": 47.43,
+      "anchorX": 46.5,
       "anchorY": 130.39,
       "anchorYBand": 139.71,
       "srcBbox": [
@@ -93,7 +93,7 @@
       "file": "jump_03.png",
       "w": 84,
       "h": 116,
-      "anchorX": 43.63,
+      "anchorX": 44.5,
       "anchorY": 115.93,
       "anchorYBand": 131.86,
       "srcBbox": [
@@ -110,7 +110,7 @@
       "file": "jump_04.png",
       "w": 86,
       "h": 119,
-      "anchorX": 44.85,
+      "anchorX": 45.5,
       "anchorY": 118.63,
       "anchorYBand": 139.46,
       "srcBbox": [
@@ -127,7 +127,7 @@
       "file": "jump_05.png",
       "w": 85,
       "h": 143,
-      "anchorX": 42.4,
+      "anchorX": 45.5,
       "anchorY": 142.4,
       "anchorYBand": 150.25,
       "srcBbox": [
@@ -144,7 +144,7 @@
       "file": "jump_06.png",
       "w": 86,
       "h": 143,
-      "anchorX": 42.89,
+      "anchorX": 46.5,
       "anchorY": 142.89,
       "anchorYBand": 150.25,
       "srcBbox": [
@@ -161,7 +161,7 @@
       "file": "jump_07.png",
       "w": 90,
       "h": 126,
-      "anchorX": 45.1,
+      "anchorX": 50.5,
       "anchorY": 126.23,
       "anchorYBand": 126.47,
       "srcBbox": [
@@ -178,7 +178,7 @@
       "file": "jump_08.png",
       "w": 88,
       "h": 115,
-      "anchorX": 47.67,
+      "anchorX": 48.5,
       "anchorY": 114.71,
       "anchorYBand": 114.95,
       "srcBbox": [
@@ -195,7 +195,7 @@
       "file": "jump_09.png",
       "w": 85,
       "h": 134,
-      "anchorX": 44.85,
+      "anchorX": 45.5,
       "anchorY": 133.82,
       "anchorYBand": 133.82,
       "srcBbox": [

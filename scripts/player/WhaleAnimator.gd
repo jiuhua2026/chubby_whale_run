@@ -17,6 +17,7 @@ var clips := {}          ## action -> Array[{"tex":Texture2D,"ax":float,"ay":flo
 ## action -> 该 clip 所有帧高的中位数。
 ## 「帧身高统一」靠它把每帧缩放到同样的显示高度（见 GameConfig.anim_uniform_height）。
 var clip_h_med := {}
+var clip_uniform_height := {}
 var loaded := false
 var load_errors: Array[String] = []
 
@@ -58,6 +59,7 @@ func set_skin(skin_id: String) -> void:
 func load_all() -> void:
 	clips.clear()
 	clip_h_med.clear()
+	clip_uniform_height.clear()
 	load_errors.clear()
 	var skin_base := SkinCatalog.get_artwork_sprite_dir(_skin_id)
 	for a in ACTIONS:
@@ -99,6 +101,7 @@ func load_all() -> void:
 			continue
 		clips[a] = arr
 		clip_h_med[a] = _median(heights)
+		clip_uniform_height[a] = bool(meta.get("uniformHeight", true))
 	loaded = load_errors.is_empty() and clips.size() == ACTIONS.size()
 	for e in load_errors:
 		push_warning("[WhaleAnimator] " + e)
@@ -174,6 +177,7 @@ func _apply(i: int) -> void:
 	var sc := _scale
 	if GameConfig.anim_uniform_height \
 			and GameConfig.anim_uniform_height_actions.has(_action) \
+			and bool(clip_uniform_height.get(_action, true)) \
 			and clip_h_med.has(_action):
 		var hm := float(clip_h_med[_action])
 		if hm > 0.0 and h > 0.0:
