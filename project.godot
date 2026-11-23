@@ -27,6 +27,7 @@ Difficulty="*res://scripts/autoload/Difficulty.gd"
 GameState="*res://scripts/autoload/GameState.gd"
 AudioManager="*res://scripts/autoload/AudioManager.gd"
 Settings="*res://scripts/autoload/Settings.gd"
+Progress="*res://scripts/autoload/Progress.gd"
 
 [display]
 

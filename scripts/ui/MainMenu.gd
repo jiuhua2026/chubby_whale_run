@@ -30,8 +30,13 @@ const OPTIONS := [
 		"mode": GameState.Mode.PRACTICE,
 	},
 	{
+		"title": "成就",
+		"desc": "纪念画片 · 进度",
+		"mode": -2,          # -2 = 打开深海成就与纪念画片图鉴
+	},
+	{
 		"title": "设置",
-		"desc": "音量 · 震动 · 显示",
+		"desc": "音量 · 震动 · 重温",
 		"mode": -1,          # -1 = 不是开跑，是打开设置面板
 	},
 ]
@@ -42,7 +47,8 @@ var _rows: Array[Label] = []
 ## 每个选项的「名字 + 说明」整体。**鼠标热区按这个算** ——
 ## 只给 Label 设热区太窄（文字高度 26px），点起来很难受。
 var _groups: Array[Control] = []
-## 设置面板：和菜单同在 CanvasLayer 200 里，最后 add ⇒ 盖在菜单之上
+## 成就面板 & 设置面板：和菜单同在 CanvasLayer 200 里，最后 add ⇒ 盖在菜单之上
+var _achievements: AchievementsPanel
 var _settings: SettingsPanel
 var _selected := 0
 var _intro_blocking := false
@@ -129,13 +135,22 @@ func _ready() -> void:
 	#    唯一别处没有的「ESC 回主界面」已挪到结算面板（玩家真正需要它的时刻）。
 	#    ⚠ 设置面板里仍保留一行操作提示 —— 那是深色面板，不碍事。
 
-	# 4. 设置面板（默认隐藏，按"设置"才展开；只有主菜单才露出「开场动画 ▶ 重温」）
+	# 4. 成就面板 & 设置面板（默认隐藏，只有主菜单才露出「开场动画 ▶ 重温」）
+	_achievements = AchievementsPanel.new()
+	add_child(_achievements)
+
 	_settings = SettingsPanel.new()
 	_settings.allow_intro_replay = true
 	_settings.replay_intro_requested.connect(func(): replay_intro_requested.emit())
 	add_child(_settings)
-	# `-- --settings`：启动直接展开面板（抓帧验收用，和其它 --shot* 开关同一个套路）
-	if OS.get_cmdline_user_args().has("--settings"):
+	# `-- --settings` / `-- --achievements`：启动直接展开对应面板（抓帧验收用）
+	if OS.get_cmdline_user_args().has("--achievements"):
+		var init_art := ""
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--art="):
+				init_art = a.substr("--art=".length())
+		_achievements.open.call_deferred(init_art)
+	elif OS.get_cmdline_user_args().has("--settings"):
 		_settings.open.call_deferred()
 
 	GameState.menu_opened.connect(_refresh)
@@ -251,8 +266,8 @@ func _on_run_started() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not GameState.is_menu() or _intro_blocking:
 		return
-	# 设置面板展开时，↑↓/回车/ESC 全部交给它，菜单不再响应
-	if _settings != null and _settings.visible:
+	# 成就或设置面板展开时，↑↓/回车/ESC 全部交给对应面板，菜单不再响应
+	if (_achievements != null and _achievements.visible) or (_settings != null and _settings.visible):
 		return
 	if event.is_action_pressed("menu_up"):
 		_selected = wrapi(_selected - 1, 0, OPTIONS.size())
@@ -275,11 +290,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif k == KEY_2 or k == KEY_KP_2:
 			_choose(1)
 			get_viewport().set_input_as_handled()
+		elif k == KEY_3 or k == KEY_KP_3:
+			_choose(2)
+			get_viewport().set_input_as_handled()
+		elif k == KEY_4 or k == KEY_KP_4:
+			_choose(3)
+			get_viewport().set_input_as_handled()
 
 
 func _choose(i: int) -> void:
 	var m: int = OPTIONS[i]["mode"]
-	if m < 0:
+	if m == -2:
+		_achievements.open()
+		return
+	if m == -1:
 		# "设置"这一项：不开跑，展开设置面板
 		_settings.open()
 		return

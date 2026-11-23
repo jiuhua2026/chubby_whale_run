@@ -29,6 +29,7 @@ var _rows: Array[Dictionary] = []
 var _sel := 0
 var _names: Array[Label] = []
 var _values: Array[Label] = []
+var _body: Control
 
 
 func _ready() -> void:
@@ -48,6 +49,11 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_fit)
 	_fit.call_deferred()
 
+	_body = Control.new()
+	_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_body)
+
 	# 1. 遮罩：吃掉背后的所有点击，同时把画面压暗
 	var dim := ColorRect.new()
 	dim.color = Color(0.01, 0.03, 0.08, 0.62)
@@ -55,7 +61,7 @@ func _ready() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	# 点面板**外**任意位置 = 关闭（比记着按 ESC 顺手）
 	dim.gui_input.connect(_on_dim_input)
-	add_child(dim)
+	_body.add_child(dim)
 
 	# 2. 居中面板
 	var panel := PanelContainer.new()
@@ -76,7 +82,7 @@ func _ready() -> void:
 	# ⚠ **必须显式 STOP**：否则点面板内部（比如调音量的 ◀ ▶）会穿透到遮罩，
 	#   变成"一调音量面板就自己关了"。默认值不可靠，写死。
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(panel)
+	_body.add_child(panel)
 
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
@@ -147,6 +153,7 @@ func _fit() -> void:
 
 func open() -> void:
 	visible = true
+	_body.visible = true
 	_sel = 0
 	_refresh()
 	AudioManager.play_sfx("ui_confirm", 0.0)
@@ -155,6 +162,7 @@ func open() -> void:
 func close() -> void:
 	if not visible:
 		return
+	_body.visible = true
 	visible = false
 	Settings.save_cfg()
 	AudioManager.play_sfx("ui_confirm", -2.0)

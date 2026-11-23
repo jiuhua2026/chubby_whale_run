@@ -14,6 +14,9 @@ signal ready_started()
 signal run_started()
 signal run_ended(reason: String, distance: float, score: int)
 signal score_changed(score: int)
+signal distance_meter_changed(meters: int)
+signal near_miss_awarded()
+signal dash_started()
 signal chase_started(index: int)
 signal chase_ended(index: int)
 signal menu_opened()
@@ -30,6 +33,7 @@ var score := 0
 var chase_index := 0
 ## 死亡原因，便于统计与调试
 var death_reason := ""
+var _last_dist_m := -1
 
 ## 分数换算：距离 + 追逐战奖励
 const SCORE_PER_PX := 0.01
@@ -55,6 +59,7 @@ func reset() -> void:
 	score = 0
 	chase_index = 0
 	death_reason = ""
+	_last_dist_m = -1
 	Difficulty.reset()
 	score_changed.emit(score)
 
@@ -107,6 +112,10 @@ func add_distance(delta: float) -> void:
 	# 速度不涨、tier 不升，高难度地形和悬顶障碍永远不会出现——
 	# 而且不会报任何错，只表现为"这游戏怎么一直是同一个难度"。
 	Difficulty.distance = distance
+	var meters := int(floor(distance / 64.0))
+	if meters != _last_dist_m:
+		_last_dist_m = meters
+		distance_meter_changed.emit(meters)
 	var s := int(distance * SCORE_PER_PX)
 	if s != score:
 		score = s

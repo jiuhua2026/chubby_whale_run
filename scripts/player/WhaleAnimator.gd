@@ -38,10 +38,13 @@ func setup(sprite: Sprite2D, char_scale: float) -> void:
 	_sprite = sprite
 	_scale = char_scale
 	_sprite.scale = Vector2(_scale, _scale)
-	_load_all()
+	load_all()
 
 
-func _load_all() -> void:
+func load_all() -> void:
+	clips.clear()
+	clip_h_med.clear()
+	load_errors.clear()
 	for a in ACTIONS:
 		var dir_path := "%s/%s" % [BASE, a]
 		var json_path := "%s/%s.json" % [dir_path, a]
@@ -78,10 +81,9 @@ func _load_all() -> void:
 			continue
 		clips[a] = arr
 		clip_h_med[a] = _median(heights)
-	loaded = not clips.is_empty()
-	if not load_errors.is_empty():
-		for e in load_errors:
-			push_warning("[WhaleAnimator] " + e)
+	loaded = load_errors.is_empty() and clips.size() == ACTIONS.size()
+	for e in load_errors:
+		push_warning("[WhaleAnimator] " + e)
 
 
 ## 中位数。用它而不是平均值，是因为这份素材里有明显的离群帧

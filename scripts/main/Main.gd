@@ -41,6 +41,7 @@ var menu: MainMenu
 var intro: OpeningIntro
 ## 暂停面板（layer 150：压在 HUD 100 之上、主菜单 200 之下）
 var pause_panel: PausePanel
+var _toast: AchievementToast
 ## 像素溶解转场（layer 220：压在主菜单之上、开场动画之下）
 var _transition: TransitionOverlay
 ## 取消暂停后短暂忽略 ESC 的剩余秒数。见 `_on_pause_resumed()`。
@@ -94,6 +95,8 @@ var _pause_shot_done := false
 var _pause_demo := false
 ## `-- --restart-demo`：验证死亡后按 R 的防误触延迟（0.45s 咬击期间屏蔽）与重开走 Phase.READY。
 var _restart_demo := false
+## `-- --achievements-demo`：验证全部 6 张纪念画片、8 个成就触发、顶部 Toast 弹出、练习模式隔离与图鉴面板交互。
+var _achievements_demo := false
 ## 抓多少帧。要覆盖「冲刺全程 + 尾巴粒子飘完」：
 ## 冲刺 1.0s（60 帧）+ 尾迹最长寿命 0.46s ≈ 88 帧，取 80 够看完整段。
 ## 悬顶模式用得长得多：造型按「世界列号 mod 4」轮换（`TerrainChunk._variant_of`
@@ -199,7 +202,8 @@ func _ready() -> void:
 	if _pause_demo:
 		_selftest = true
 	_restart_demo = user_args.has("--restart-demo")
-	if _selftest or _shot or _pause_demo or _restart_demo or _intro_shot_t >= 0.0:
+	_achievements_demo = user_args.has("--achievements-demo")
+	if _selftest or _shot or _pause_demo or _restart_demo or _achievements_demo or _intro_shot_t >= 0.0:
 		Settings.record_save_enabled = false
 	# --over-variant=N / --low-variant=N：强制某一组障碍只用第 N 款造型
 	# （逐款核对贴图用，见 TerrainChunk）
@@ -260,8 +264,9 @@ func _ready() -> void:
 			intro.seek_for_capture(_intro_shot_t, _intro_shot_replay)
 			if _intro_shot_t >= OpeningIntro.T_HANDOFF:
 				menu.reveal_ui(0.0, clampf((_intro_shot_t - OpeningIntro.T_HANDOFF) / 0.45, 0.0, 1.0))
-		elif not _shot and not _pause_demo and not _restart_demo and not user_args.has("--settings") \
-				and not Settings.intro_seen:
+		elif not _shot and not _pause_demo and not _restart_demo and not _achievements_demo \
+				and not user_args.has("--settings") \
+				and not user_args.has("--achievements") and not Settings.intro_seen:
 			menu.set_intro_blocking(true)
 			intro.play(false)
 		else:
@@ -272,6 +277,8 @@ func _ready() -> void:
 		Callable(self, "_run_pause_demo").call_deferred()
 	if _restart_demo:
 		Callable(self, "_run_restart_demo").call_deferred()
+	if _achievements_demo:
+		Callable(self, "_run_achievements_demo").call_deferred()
 
 
 func _on_mode_chosen(p_mode: int) -> void:
@@ -390,6 +397,10 @@ func _build() -> void:
 	menu = MainMenu.new()
 	menu.name = "MainMenu"
 	add_child(menu)          # layer 200，压在 HUD 之上
+
+	_toast = AchievementToast.new()
+	_toast.name = "AchievementToast"
+	add_child(_toast)        # layer 210，成就解锁顶部轻提示
 
 	intro = OpeningIntro.new()
 	intro.name = "OpeningIntro"
@@ -1125,6 +1136,107 @@ func _run_restart_demo() -> void:
 		print("[restart-demo] ALL PASS")
 		get_tree().quit(0)
 	else:
+		get_tree().quit(1)
+
+
+## `-- --achievements-demo`：在内存测试沙盒内完整验证纪念画片资源、8 个成就解锁、Toast 与图鉴面板交互。
+func _run_achievements_demo() -> void:
+	var ok := true
+	var fail := func(msg: String) -> void:
+		ok = false
+		push_error("[achievements] FAIL: " + msg)
+		print("[achievements] FAIL: " + msg)
+
+	Progress.begin_test_sandbox()
+
+	# 1. 所有 6 张纪念画片预览图资源必须存在，且主角保持默认精修动作帧（8/10/10）
+	for a: Dictionary in SkinCatalog.ARTWORKS:
+		var pv := String(a["preview"])
+		if not ResourceLoader.exists(pv):
+			fail.call("缺少纪念画片: " + pv)
+	if not player._anim.loaded \
+			or player._anim.frame_count("run") != 8 \
+			or player._anim.frame_count("jump") != 10 \
+			or player._anim.frame_count("slide") != 10:
+		fail.call("默认深海女仆动作帧加载异常")
+
+	# 2. 练习模式下跑动 / 擦身 / 冲刺 / 死亡不能计入正式成就
+	GameState.start_run(GameState.Mode.PRACTICE)
+	GameState.add_distance(350.0 * 64.0)
+	GameState.near_miss_awarded.emit()
+	GameState.dash_started.emit()
+	GameState.end_run("caught_by_chaser")
+	if Progress.unlocked_achievement_count() != 0 or int(Progress.stats["total_dist_m"]) != 0:
+		fail.call("练习模式不应计入正式成就与累计数据")
+
+	# 3. 正常模式验证：300m 初潜突围 + 20 擦身 + 15 冲刺 + Toast
+	GameState.start_run(GameState.Mode.NORMAL)
+	GameState.add_distance(299.0 * 64.0)
+	if Progress.is_achievement_unlocked("ach_dive_300m"):
+		fail.call("299m 时不应提前解锁 初潜突围")
+	GameState.add_distance(1.0 * 64.0)
+	await get_tree().process_frame
+	if not Progress.is_achievement_unlocked("ach_dive_300m") or not _toast.is_showing():
+		fail.call("300m 时未解锁 初潜突围 或 Toast 未弹出")
+	for _i in 20:
+		GameState.near_miss_awarded.emit()
+	if not Progress.is_achievement_unlocked("ach_nearmiss_20"):
+		fail.call("累计 20 次擦身未解锁 贴脸舞者")
+	for _i in 4:
+		GameState.dash_started.emit()
+	# 1000m 但只有 4 次冲刺 ⇒ 尚不能解锁 甩尾大师
+	GameState.add_distance(700.0 * 64.0)
+	if Progress.is_achievement_unlocked("ach_master_1000m_5dash"):
+		fail.call("1000m + 4 次冲刺时不应提前解锁 甩尾大师")
+	# 补第 5 次冲刺 ⇒ 立刻同时达成 1000m + 5 冲刺解锁 甩尾大师
+	GameState.dash_started.emit()
+	if not Progress.is_achievement_unlocked("ach_master_1000m_5dash"):
+		fail.call("1000m 后补足第 5 次冲刺应立即解锁 甩尾大师")
+	# 再补 10 次冲刺 ⇒ 累计 15 次冲刺解锁 深海疾风
+	for _i in 10:
+		GameState.dash_started.emit()
+	if not Progress.is_achievement_unlocked("ach_dash_15"):
+		fail.call("累计 15 次冲刺未解锁 深海疾风")
+	GameState.end_run("caught_by_chaser")
+	if not Progress.is_achievement_unlocked("ach_easter_caught"):
+		fail.call("caught_by_chaser 未解锁彩蛋 美味大肥鱼")
+
+	# 4. 多局累计跑满 5000m ⇒ 全勤打工鱼 + 其余彩蛋成就
+	for r in 10:
+		GameState.start_run(GameState.Mode.NORMAL)
+		GameState.add_distance(400.0 * 64.0)
+		GameState.end_run("caught_by_wall" if r == 0 else "fell_into_chasm")
+	GameState.start_run(GameState.Mode.NORMAL)
+	GameState.end_run("fell_into_chasm")
+	if not Progress.is_achievement_unlocked("ach_total_5000m"):
+		fail.call("累计满 5000m 未解锁 全勤打工鱼")
+	if Progress.unlocked_achievement_count() != SkinCatalog.ACHIEVEMENTS.size():
+		fail.call("全部 8 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
+
+	# 5. UI 面板（主菜单 3 成就打开与 ESC 关闭 + 4 设置不再含重复成就行）
+	GameState.to_menu()
+	await get_tree().process_frame
+	menu._choose(2) # 成就
+	await get_tree().process_frame
+	if not menu._achievements.visible:
+		fail.call("主菜单选 3 成就 未打开 AchievementsPanel")
+	_tap(KEY_ESCAPE)
+	await get_tree().process_frame
+	if menu._achievements.visible:
+		fail.call("ESC 未关闭 AchievementsPanel")
+
+	for row: Dictionary in menu._settings._rows:
+		if String(row["id"]) == "achievements":
+			fail.call("SettingsPanel 不应保留重复的 achievements 行")
+
+	Progress.end_test_sandbox()
+	if ok:
+		print("[achievements] ALL PASS (artworks=%d achievements=%d/%d)" % [
+			SkinCatalog.ARTWORKS.size(), SkinCatalog.ACHIEVEMENTS.size(), SkinCatalog.ACHIEVEMENTS.size()
+		])
+		get_tree().quit(0)
+	else:
+		push_error("[achievements] FAIL")
 		get_tree().quit(1)
 
 

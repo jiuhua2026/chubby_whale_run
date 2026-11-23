@@ -521,6 +521,7 @@ func award_near_miss() -> bool:
 		return false
 	_nm_award_x = global_position.x
 	dash_charge += 1
+	GameState.near_miss_awarded.emit()
 	if dash_charge >= GameConfig.dash_charge_max:
 		AudioManager.play_sfx("dash_ready", -2.0)
 	else:
@@ -533,6 +534,7 @@ func _start_dash() -> void:
 	dash_charge = 0
 	_dash_t = GameConfig.dash_time
 	dash_count += 1
+	GameState.dash_started.emit()
 	if dash_fx != null:
 		dash_fx.start_dash()
 	AudioManager.play_sfx("dash", 2.0)
