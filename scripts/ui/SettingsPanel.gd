@@ -11,6 +11,7 @@ class_name SettingsPanel
 
 signal closed
 signal replay_intro_requested
+signal achievements_requested
 
 const BASE_ROWS := [
 	{"id": "bgm_volume", "name": "音乐音量"},
@@ -18,11 +19,13 @@ const BASE_ROWS := [
 	{"id": "shake", "name": "屏幕震动"},
 	{"id": "fullscreen", "name": "显示模式"},
 ]
+const ACHIEVEMENTS_ROW := {"id": "achievements", "name": "成就图鉴"}
 const REPLAY_ROW := {"id": "intro_replay", "name": "开场动画"}
 const SHAKE_TEXTS := ["关", "50%", "100%"]
 const SHAKE_VALUES := [0.0, 0.5, 1.0]
 
-## 只有主菜单打开的设置才显示「重温开场」；局内暂停里的设置隐藏该项，防跑酷中途误触。
+## 只有主菜单打开的设置才显示「成就图鉴」与「重温开场」；局内暂停里的设置隐藏，防跑酷中途误触。
+@export var allow_achievements := false
 @export var allow_intro_replay := false
 
 var _rows: Array[Dictionary] = []
@@ -36,6 +39,8 @@ func _ready() -> void:
 	_rows.clear()
 	for r: Dictionary in BASE_ROWS:
 		_rows.append(r)
+	if allow_achievements:
+		_rows.append(ACHIEVEMENTS_ROW)
 	if allow_intro_replay:
 		_rows.append(REPLAY_ROW)
 
@@ -96,7 +101,7 @@ func _ready() -> void:
 	# 3. 设置行：名字 + ◀ 值 ▶（重温开场为动作行，点整行/回车/右箭头即可触发）
 	for i in _rows.size():
 		var row_id := String(_rows[i]["id"])
-		var is_action := row_id == "intro_replay"
+		var is_action := row_id == "intro_replay" or row_id == "achievements"
 		var box := HBoxContainer.new()
 		box.add_theme_constant_override("separation", 8)
 		box.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -151,10 +156,15 @@ func _fit() -> void:
 	size = get_viewport_rect().size
 
 
-func open() -> void:
+func open(initial_row_id: String = "") -> void:
 	visible = true
 	_body.visible = true
 	_sel = 0
+	if initial_row_id != "":
+		for i in _rows.size():
+			if String(_rows[i]["id"]) == initial_row_id:
+				_sel = i
+				break
 	_refresh()
 	AudioManager.play_sfx("ui_confirm", 0.0)
 
@@ -243,6 +253,11 @@ func _adjust(i: int, dir: int) -> void:
 		"fullscreen":
 			Settings.fullscreen = not Settings.fullscreen
 			Settings.apply_display()
+		"achievements":
+			Settings.save_cfg()
+			visible = false
+			achievements_requested.emit()
+			return
 		"intro_replay":
 			Settings.save_cfg()
 			visible = false
@@ -283,6 +298,8 @@ func _value_text(id: String) -> String:
 			return SHAKE_TEXTS[_shake_index()]
 		"fullscreen":
 			return "全屏" if Settings.fullscreen else "窗口"
+		"achievements":
+			return "查看"
 		"intro_replay":
 			return "重温"
 	return ""

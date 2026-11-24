@@ -13,7 +13,7 @@ SKINS_SRC_DIR = os.path.join("image", "player", "skins")
 SKINS_OUT_DIR = os.path.join("sprites", "skins")
 TARGET_H = 260
 
-SKIP_SKINS = {"burger_crew"}
+SKIP_SKINS: set[str] = set()
 
 ## 针对跨白名单区域/紧贴白色鞋袜描边的定向补孔种子表（源图 left_slice 坐标）
 ## 仅向内按亮白阈值扩张并带 max_area 保险丝，绝不波及周边白色毛边或白袜。
@@ -28,15 +28,335 @@ EXTRA_HOLE_SEEDS = {
         (332, 731),   # 双腿白袜正中纵向窄缝
         (447, 734),   # 右下白色毛边裙底与鲸鱼尾巴之间细缝
     ],
+    "burger_crew": [
+        (435, 775),   # 左侧下颌、发丝与红白衣领之间的棋盘格镂空
+        (635, 765),   # 右侧话筒、发丝与红白肩袖之间的棋盘格镂空
+        (322, 737),   # 左侧外缕细发丝与主发卷之间的夹缝
+        (776, 974),   # 右侧白袖口与长马尾之间的细小镂空角
+    ],
 }
 
 
 def find_turnaround(skin_dir: str) -> str | None:
-    for name in ("character_turnaround.png", "character_turnaround.jpg"):
+    for name in (
+        "character_turnaround.png",
+        "Gemini_Generated_Image_xssux7xssux7xssu.jpg",
+        "character_turnaround.jpg",
+    ):
         p = os.path.join(skin_dir, name)
         if os.path.isfile(p):
             return p
     return None
+
+
+def _is_checkerboard_bg(im: Image.Image) -> bool:
+    """检测左上角背景是否为灰白棋盘格（同时存在浅白 >=245 与中性灰 <=222）。"""
+    rgb = im.convert("RGB")
+    w, h = rgb.size
+    px = rgb.load()
+    has_gray = False
+    has_white = False
+    for y in range(0, min(100, h), 2):
+        for x in range(0, min(100, w), 2):
+            r, g, b = px[x, y]
+            if max(r, g, b) - min(r, g, b) > 12:
+                continue
+            mc = min(r, g, b)
+            if 190 <= mc <= 222:
+                has_gray = True
+            elif mc >= 245:
+                has_white = True
+            if has_gray and has_white:
+                return True
+    return False
+
+
+def key_checkerboard_clean(
+    im: Image.Image,
+    extra_seeds: list[tuple[int, int]] | None = None,
+) -> Image.Image:
+    """从灰白假棋盘格 JPG 中精确扣除外部与闭合镂空，并用局部背景亮度反预乘去白/灰边。"""
+    rgb = im.convert("RGB")
+    w, h = rgb.size
+    n = w * h
+    px = rgb.load()
+
+    def is_bg_px(r: int, g: int, b: int) -> bool:
+        return min(r, g, b) >= 188 and (max(r, g, b) - min(r, g, b)) <= 14
+
+    bg = bytearray(n)
+    dq = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            i = y * w + x
+            if is_bg_px(*px[x, y]) and not bg[i]:
+                bg[i] = 1
+                dq.append(i)
+    for y in range(h):
+        for x in (0, w - 1):
+            i = y * w + x
+            if is_bg_px(*px[x, y]) and not bg[i]:
+                bg[i] = 1
+                dq.append(i)
+    while dq:
+        i = dq.popleft()
+        x, y = i % w, i // w
+        for ni in (
+            i - 1 if x > 0 else -1,
+            i + 1 if x < w - 1 else -1,
+            i - w if y > 0 else -1,
+            i + w if y < h - 1 else -1,
+        ):
+            if ni >= 0 and not bg[ni] and is_bg_px(*px[ni % w, ni // w]):
+                bg[ni] = 1
+                dq.append(ni)
+
+    # 人物紧致包围盒，仅对发丝/头顶区域的棋盘格闭合孔自动挖孔
+    xs_fg = [x for x in range(0, w, 2) if any(not bg[y * w + x] for y in range(0, h, 2))]
+    ys_fg = [y for y in range(0, h, 2) if any(not bg[y * w + x] for x in range(0, w, 2))]
+    fx0, fx1 = (min(xs_fg), max(xs_fg)) if xs_fg else (0, w - 1)
+    fy0, fy1 = (min(ys_fg), max(ys_fg)) if ys_fg else (0, h - 1)
+    fw, fh = max(1, fx1 - fx0), max(1, fy1 - fy0)
+
+    seen = bytearray(n)
+    for sy in range(h):
+        for sx in range(w):
+            si = sy * w + sx
+            if bg[si] or seen[si] or not is_bg_px(*px[sx, sy]):
+                continue
+            dq = deque([si])
+            seen[si] = 1
+            pts = []
+            edge_pts = []
+            while dq:
+                i = dq.popleft()
+                pts.append(i)
+                x, y = i % w, i // w
+                is_edge = False
+                for ni in (
+                    i - 1 if x > 0 else -1,
+                    i + 1 if x < w - 1 else -1,
+                    i - w if y > 0 else -1,
+                    i + w if y < h - 1 else -1,
+                ):
+                    if ni < 0 or bg[ni]:
+                        continue
+                    if is_bg_px(*px[ni % w, ni // w]):
+                        if not seen[ni]:
+                            seen[ni] = 1
+                            dq.append(ni)
+                    else:
+                        is_edge = True
+                if is_edge:
+                    edge_pts.append((x, y))
+            if len(pts) < 30 or not edge_pts:
+                continue
+            xs_p = [p % w for p in pts]
+            ys_p = [p // w for p in pts]
+            cx = (min(xs_p) + max(xs_p)) * 0.5
+            cy = (min(ys_p) + max(ys_p)) * 0.5
+            rx = (cx - fx0) / fw
+            ry = (cy - fy0) / fh
+            if not (ry < 0.20 or (ry < 0.72 and (rx < 0.25 or rx > 0.68))):
+                continue
+            gray_cnt = sum(1 for p in pts if 190 <= min(px[p % w, p // w]) <= 220)
+            if gray_cnt < len(pts) * 0.15:
+                continue
+            ink = 0
+            warm = 0
+            samples = edge_pts[::max(1, len(edge_pts) // 160)]
+            for ex, ey in samples:
+                hd = False
+                hw = False
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)):
+                    for rad in range(1, 7):
+                        nx, ny = ex + dx * rad, ey + dy * rad
+                        if 0 <= nx < w and 0 <= ny < h:
+                            rr, gg, bb = px[nx, ny]
+                            if max(rr, gg, bb) < 165 or (bb - rr >= 15 and max(rr, gg, bb) < 228):
+                                hd = True
+                            if rr - bb > 26 and rr > 140:
+                                hw = True
+                            if hd or hw:
+                                break
+                    if hd or hw:
+                        break
+                if hd:
+                    ink += 1
+                if hw:
+                    warm += 1
+            if ink / float(len(samples)) >= 0.65 and warm / float(len(samples)) <= 0.08:
+                for p in pts:
+                    bg[p] = 1
+
+    # 定向补孔（颈部/发丝内侧紧贴肤色与红条纹衣服的封闭棋盘格孔）
+    if extra_seeds:
+        for sx, sy in extra_seeds:
+            if not (0 <= sx < w and 0 <= sy < h):
+                continue
+            si = sy * w + sx
+            if bg[si] or not is_bg_px(*px[sx, sy]):
+                continue
+            dq = deque([si])
+            vis = {si}
+            aborted = False
+            while dq:
+                i = dq.popleft()
+                if len(vis) > 4500:
+                    aborted = True
+                    break
+                x, y = i % w, i // w
+                for ni in (
+                    i - 1 if x > 0 else -1,
+                    i + 1 if x < w - 1 else -1,
+                    i - w if y > 0 else -1,
+                    i + w if y < h - 1 else -1,
+                ):
+                    if ni >= 0 and not bg[ni] and ni not in vis and is_bg_px(*px[ni % w, ni // w]):
+                        vis.add(ni)
+                        dq.append(ni)
+            if not aborted:
+                for p in vis:
+                    bg[p] = 1
+
+    # 边界 4px 过渡带：用局部背景亮度 + 最近前景内部色做反预乘并压暗去白边
+    band = 4
+    dist = bytearray(n)
+    frontier = [i for i in range(n) if bg[i]]
+    for lv in range(1, band + 3):
+        nxt = []
+        for i in frontier:
+            x, y = i % w, i // w
+            for ni in (
+                i - 1 if x > 0 else -1,
+                i + 1 if x < w - 1 else -1,
+                i - w if y > 0 else -1,
+                i + w if y < h - 1 else -1,
+            ):
+                if ni >= 0 and not bg[ni] and dist[ni] == 0:
+                    dist[ni] = lv
+                    nxt.append(ni)
+        frontier = nxt
+        if not frontier:
+            break
+
+    bg_val = bytearray(n)
+    bg_q = deque()
+    for i in range(n):
+        if bg[i]:
+            r, g, b = px[i % w, i // w]
+            bg_val[i] = (r + g + b) // 3
+            bg_q.append(i)
+    while bg_q:
+        i = bg_q.popleft()
+        if dist[i] >= band:
+            continue
+        x, y = i % w, i // w
+        for ni in (
+            i - 1 if x > 0 else -1,
+            i + 1 if x < w - 1 else -1,
+            i - w if y > 0 else -1,
+            i + w if y < h - 1 else -1,
+        ):
+            if ni >= 0 and not bg[ni] and bg_val[ni] == 0 and dist[ni] <= band:
+                bg_val[ni] = bg_val[i]
+                bg_q.append(ni)
+
+    minc = bytearray(n)
+    for y in range(h):
+        row = y * w
+        for x in range(w):
+            minc[row + x] = min(px[x, y])
+
+    deep = bytearray(n)
+    for i in range(n):
+        if bg[i]:
+            continue
+        if dist[i] == 0 or dist[i] > band:
+            deep[i] = 1
+        else:
+            x, y = i % w, i // w
+            v = minc[i]
+            if not (
+                (x > 0 and not bg[i - 1] and minc[i - 1] < v)
+                or (x < w - 1 and not bg[i + 1] and minc[i + 1] < v)
+                or (y > 0 and not bg[i - w] and minc[i - w] < v)
+                or (y < h - 1 and not bg[i + w] and minc[i + w] < v)
+            ):
+                deep[i] = 1
+
+    cr = bytearray(n)
+    cg = bytearray(n)
+    cb = bytearray(n)
+    cm = bytearray(n)
+    has = bytearray(n)
+    fq = deque()
+    for i in range(n):
+        if deep[i]:
+            r, g, b = px[i % w, i // w]
+            cr[i] = r
+            cg[i] = g
+            cb[i] = b
+            cm[i] = max(r, g, b)
+            has[i] = 1
+            fq.append(i)
+    while fq:
+        i = fq.popleft()
+        x, y = i % w, i // w
+        for ni in (
+            i - 1 if x > 0 else -1,
+            i + 1 if x < w - 1 else -1,
+            i - w if y > 0 else -1,
+            i + w if y < h - 1 else -1,
+        ):
+            if ni >= 0 and not bg[ni] and not has[ni]:
+                cr[ni] = cr[i]
+                cg[ni] = cg[i]
+                cb[ni] = cb[i]
+                cm[ni] = cm[i]
+                has[ni] = 1
+                fq.append(ni)
+
+    out = Image.new("RGBA", (w, h))
+    po = out.load()
+    for y in range(h):
+        row = y * w
+        for x in range(w):
+            i = row + x
+            if bg[i]:
+                po[x, y] = (0, 0, 0, 0)
+                continue
+            r, g, b = px[x, y]
+            if deep[i]:
+                po[x, y] = (r, g, b, 255)
+                continue
+            fm = min(cr[i], cg[i], cb[i]) if has[i] else 40
+            cap = cm[i] if has[i] else 40
+            bv = float(bg_val[i] if bg_val[i] > 0 else 230)
+            den = bv - fm
+            a = 1.0 if den <= 1.0 else (bv - minc[i]) / den
+            a = _clamp01(a)
+            al = int(a * 255.0 + 0.5)
+            if al < 14:
+                po[x, y] = (0, 0, 0, 0)
+                continue
+            back = bv * (1.0 - a)
+            rr = int((r - back) / a + 0.5)
+            gg = int((g - back) / a + 0.5)
+            bb = int((b - back) / a + 0.5)
+            hi = max(rr, gg, bb)
+            if hi > cap > 0:
+                k = cap / float(hi)
+                rr = int(rr * k + 0.5)
+                gg = int(gg * k + 0.5)
+                bb = int(bb * k + 0.5)
+            po[x, y] = (
+                0 if rr < 0 else (255 if rr > 255 else rr),
+                0 if gg < 0 else (255 if gg > 255 else gg),
+                0 if bb < 0 else (255 if bb > 255 else bb),
+                al,
+            )
+    return out
 
 
 def _clamp01(v: float) -> float:
@@ -412,37 +732,46 @@ def resize_premultiplied(im: Image.Image, target_h: int) -> Image.Image:
         Image.frombytes("L", (w, h), bytes(pg)),
         Image.frombytes("L", (w, h), bytes(pb)),
         a,
-    )).resize((new_w, target_h), Image.Resampling.LANCZOS)
+    )).resize((new_w, target_h), Image.Resampling.HAMMING)
 
     rr, gg, bb2, aa = prem.split()
     r2, g2, b2, a2 = rr.tobytes(), gg.tobytes(), bb2.tobytes(), aa.tobytes()
     out_r = bytearray(len(a2))
     out_g = bytearray(len(a2))
     out_b = bytearray(len(a2))
+    out_a = bytearray(a2)
     for i, av in enumerate(a2):
-        if av > 0:
+        if av >= 10:
             out_r[i] = min(255, (r2[i] * 255 + av // 2) // av)
             out_g[i] = min(255, (g2[i] * 255 + av // 2) // av)
             out_b[i] = min(255, (b2[i] * 255 + av // 2) // av)
+        else:
+            out_a[i] = 0
     return Image.merge("RGBA", (
         Image.frombytes("L", (new_w, target_h), bytes(out_r)),
         Image.frombytes("L", (new_w, target_h), bytes(out_g)),
         Image.frombytes("L", (new_w, target_h), bytes(out_b)),
-        aa,
+        Image.frombytes("L", (new_w, target_h), bytes(out_a)),
     ))
 
 
 def export_one(skin_id: str, src_path: str, out_dir: str, target_h: int) -> None:
     with Image.open(src_path) as im:
         w, h = im.size
-        left_slice = im.crop((0, 0, int(w * 0.42), h))
-        rgba = key_white_clean(
-            left_slice,
-            t_bg=238,
-            band=4,
-            alpha_floor=12,
-            extra_seeds=EXTRA_HOLE_SEEDS.get(skin_id),
-        )
+        is_checker = _is_checkerboard_bg(im)
+        left_w = int(w * 0.375) if is_checker else int(w * 0.42)
+        left_slice = im.crop((0, 0, left_w, h))
+        seeds = EXTRA_HOLE_SEEDS.get(skin_id)
+        if is_checker:
+            rgba = key_checkerboard_clean(left_slice, extra_seeds=seeds)
+        else:
+            rgba = key_white_clean(
+                left_slice,
+                t_bg=238,
+                band=4,
+                alpha_floor=12,
+                extra_seeds=seeds,
+            )
         fig = crop_left_figure(rgba)
         out_im = resize_premultiplied(fig, target_h)
 
@@ -450,7 +779,43 @@ def export_one(skin_id: str, src_path: str, out_dir: str, target_h: int) -> None
     os.makedirs(dst_dir, exist_ok=True)
     dst_path = os.path.join(dst_dir, "preview.png")
     out_im.save(dst_path, optimize=True)
-    print(f"[OK] {skin_id:<16} {out_im.size}  {os.path.getsize(dst_path)/1024:.1f} KB -> {dst_path}")
+
+    # 同步导出头肩特写正方形大头贴 avatar.png (128x128)
+    av_im = make_head_avatar(out_im, 128, skin_id)
+    av_path = os.path.join(dst_dir, "avatar.png")
+    av_im.save(av_path, optimize=True)
+    print(f"[OK] {skin_id:<16} {out_im.size}  {os.path.getsize(dst_path)/1024:.1f} KB -> {dst_path} (+ avatar.png)")
+
+
+def make_head_avatar(preview_im: Image.Image, size: int = 128, skin_id: str = "") -> Image.Image:
+    """从全身立绘 preview.png 裁出头肩特写正方形大头贴，严格按双眼对称中心水平居中。"""
+    w, h = preview_im.size
+    # 锁定面部区间 (y in 0.33h..0.48h, x in 0.25w..0.72w) 的深色眼睫像素，彻底避开右侧鲸鱼尾巴干扰
+    px = preview_im.load()
+    eye_xs = [
+        x for y in range(int(h * 0.33), int(h * 0.48))
+        for x in range(int(w * 0.25), int(w * 0.72))
+        if px[x, y][3] > 200 and max(px[x, y][:3]) < 65
+    ]
+    cx = (min(eye_xs) + max(eye_xs)) * 0.5 if eye_xs else w * 0.5
+    if skin_id == "burger_crew":
+        # 鲸堡店员高马尾把整体拉高，适当缩小裁切框并保留顶部呆毛
+        crop_side = int(round(h * 0.65))
+        y0 = 0
+    else:
+        crop_side = int(round(h * 0.68))  # 覆盖呆毛帽顶到胸口领结/肩部
+        y0 = 0
+    half = crop_side * 0.5
+    x0 = int(round(cx - half))
+    # 建立透明画布并贴入裁切区（防止贴边溢出丢失边缘）
+    sq = Image.new("RGBA", (crop_side, crop_side), (0, 0, 0, 0))
+    sx0 = max(0, x0)
+    sy0 = max(0, y0)
+    sx1 = min(w, x0 + crop_side)
+    sy1 = min(h, y0 + crop_side)
+    if sx1 > sx0 and sy1 > sy0:
+        sq.alpha_composite(preview_im.crop((sx0, sy0, sx1, sy1)), (sx0 - x0, sy0 - y0))
+    return resize_premultiplied(sq, size) if crop_side != size else sq
 
 
 def main() -> None:

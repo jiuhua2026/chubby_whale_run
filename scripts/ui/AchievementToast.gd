@@ -92,11 +92,11 @@ func _pop_next() -> void:
 	_title_lbl.text = "成就达成 · %s" % String(ach.get("name", ""))
 	if aid != "":
 		var art := SkinCatalog.get_artwork(aid)
-		_sub_lbl.text = "解锁纪念画片：%s（可在主菜单「成就」欣赏）" % String(art.get("name", aid))
+		_sub_lbl.text = "解锁新造型：%s（可在主菜单「换装」查看）" % String(art.get("name", aid))
 	else:
 		var tag := String(ach.get("tag", "成就"))
 		var prefix := "彩蛋成就" if tag == "彩蛋" else "深海成就"
-		_sub_lbl.text = "%s已收录至主菜单「成就」（%s）" % [prefix, String(ach.get("desc", ""))]
+		_sub_lbl.text = "%s已收录至「设置 → 成就图鉴」（%s）" % [prefix, String(ach.get("desc", ""))]
 
 	_card.visible = true
 	_card.modulate.a = 0.0

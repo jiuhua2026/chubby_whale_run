@@ -1,13 +1,13 @@
 {
   "action": "run",
-  "source": "cozy_run_final.png",
+  "source": "cozy_knit_run_spritesheet.png",
   "sourceSize": [
-    2048,
-    2048
+    1024,
+    1024
   ],
-  "sourceScale": 4.18,
+  "sourceScale": 2.08,
   "normalizedScale": 1.0,
-  "resampleFactor": 0.239234,
+  "resampleFactor": 0.480769,
   "fps": 12,
   "colorMatch": null,
   "anchorNote": "anchorX 逐帧取头部区域水平中心；anchorY 逐帧取轮廓最低点（脚底） —— 两轴都归一化，帧内排版位移全部归零",
@@ -15,19 +15,19 @@
     {
       "index": 0,
       "y": [
-        207,
-        782
+        116,
+        395
       ],
-      "anchorY": 187.08,
+      "anchorY": 189.9,
       "frames": 4
     },
     {
       "index": 1,
       "y": [
-        1172,
-        1748
+        585,
+        861
       ],
-      "anchorY": 418.18,
+      "anchorY": 413.94,
       "frames": 4
     }
   ],
@@ -36,138 +36,137 @@
       "index": 0,
       "band": 0,
       "file": "run_00.png",
-      "w": 113,
-      "h": 137,
-      "anchorX": 70.5,
-      "anchorY": 136.5,
-      "anchorYBand": 137.56,
+      "w": 114,
+      "h": 132,
+      "anchorX": 63.46,
+      "anchorY": 131.73,
+      "anchorYBand": 131.73,
       "srcBbox": [
-        24,
-        207,
-        494,
-        779
+        7,
+        121,
+        244,
+        395
       ],
-      "srcCx": 280.0
+      "srcCx": 139.0
     },
     {
       "index": 1,
       "band": 0,
       "file": "run_01.png",
-      "w": 114,
-      "h": 136,
-      "anchorX": 71.5,
-      "anchorY": 135.5,
-      "anchorYBand": 135.89,
+      "w": 116,
+      "h": 131,
+      "anchorX": 63.7,
+      "anchorY": 130.29,
+      "anchorYBand": 130.29,
       "srcBbox": [
-        531,
-        214,
-        1006,
-        782
+        258,
+        124,
+        499,
+        395
       ],
-      "srcCx": 783.0
+      "srcCx": 390.5
     },
     {
       "index": 2,
       "band": 0,
       "file": "run_02.png",
-      "w": 110,
-      "h": 138,
-      "anchorX": 67.5,
-      "anchorY": 137.5,
-      "anchorYBand": 137.56,
+      "w": 113,
+      "h": 135,
+      "anchorX": 61.54,
+      "anchorY": 134.13,
+      "anchorYBand": 134.13,
       "srcBbox": [
-        1057,
-        207,
-        1517,
-        782
+        520,
+        116,
+        754,
+        395
       ],
-      "srcCx": 1309.0
+      "srcCx": 648.0
     },
     {
       "index": 3,
       "band": 0,
       "file": "run_03.png",
-      "w": 111,
-      "h": 137,
-      "anchorX": 68.5,
-      "anchorY": 136.5,
-      "anchorYBand": 137.32,
+      "w": 116,
+      "h": 133,
+      "anchorX": 62.74,
+      "anchorY": 132.69,
+      "anchorYBand": 133.17,
       "srcBbox": [
-        1562,
-        208,
-        2024,
-        781
+        766,
+        118,
+        1006,
+        394
       ],
-      "srcCx": 1808.0
+      "srcCx": 896.5
     },
     {
       "index": 4,
       "band": 1,
       "file": "run_04.png",
-      "w": 112,
-      "h": 137,
-      "anchorX": 69.5,
-      "anchorY": 136.5,
-      "anchorYBand": 136.84,
+      "w": 114,
+      "h": 131,
+      "anchorX": 63.46,
+      "anchorY": 130.77,
+      "anchorYBand": 131.73,
       "srcBbox": [
-        24,
-        1176,
-        493,
-        1748
+        7,
+        587,
+        244,
+        859
       ],
-      "srcCx": 278.0
+      "srcCx": 139.0
     },
     {
       "index": 5,
       "band": 1,
       "file": "run_05.png",
-      "w": 111,
-      "h": 136,
-      "anchorX": 68.5,
-      "anchorY": 135.5,
-      "anchorYBand": 136.6,
+      "w": 115,
+      "h": 129,
+      "anchorX": 63.7,
+      "anchorY": 128.37,
+      "anchorYBand": 128.37,
       "srcBbox": [
-        545,
-        1177,
-        1007,
-        1746
+        263,
+        594,
+        502,
+        861
       ],
-      "srcCx": 799.5
+      "srcCx": 395.5
     },
     {
       "index": 6,
       "band": 1,
       "file": "run_06.png",
-      "w": 110,
-      "h": 138,
-      "anchorX": 67.5,
-      "anchorY": 137.5,
-      "anchorYBand": 137.8,
+      "w": 109,
+      "h": 133,
+      "anchorX": 57.93,
+      "anchorY": 132.69,
+      "anchorYBand": 132.69,
       "srcBbox": [
-        1058,
-        1172,
-        1517,
-        1746
+        523,
+        585,
+        748,
+        861
       ],
-      "srcCx": 1311.0
+      "srcCx": 643.5
     },
     {
       "index": 7,
       "band": 1,
       "file": "run_07.png",
-      "w": 108,
-      "h": 137,
-      "anchorX": 65.5,
-      "anchorY": 136.5,
-      "anchorYBand": 137.32,
+      "w": 112,
+      "h": 131,
+      "anchorX": 61.06,
+      "anchorY": 130.77,
+      "anchorYBand": 132.69,
       "srcBbox": [
-        1572,
-        1174,
-        2024,
-        1745
+        772,
+        585,
+        1005,
+        857
       ],
-      "srcCx": 1825.0
+      "srcCx": 899.0
     }
-  ],
-  "uniformHeight": false
+  ]
 }

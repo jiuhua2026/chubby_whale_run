@@ -71,7 +71,7 @@ func load_progress() -> void:
 		stats[k] = maxi(0, int(cf.get_value("stats", k, 0)))
 
 	var eq := String(cf.get_value("skins", "equipped", "default"))
-	equipped_skin = eq if is_skin_unlocked(eq) else "default"
+	equipped_skin = eq if can_equip_skin(eq) else "default"
 
 
 func save_progress() -> void:
@@ -115,18 +115,16 @@ func is_achievement_unlocked(ach_id: String) -> bool:
 
 
 func is_skin_unlocked(skin_id: String) -> bool:
-	if skin_id == "default":
-		return true
-	if not SkinCatalog.is_skin_playable(skin_id):
-		return false
-	for ach: Dictionary in SkinCatalog.ACHIEVEMENTS:
-		if String(ach.get("reward_art", "")) == skin_id:
-			return is_achievement_unlocked(String(ach["id"]))
-	return false
+	var req := SkinCatalog.get_skin_required_achievements(skin_id)
+	return unlocked_achievement_count() >= req
+
+
+func can_equip_skin(skin_id: String) -> bool:
+	return is_skin_unlocked(skin_id) and SkinCatalog.is_skin_playable(skin_id)
 
 
 func set_equipped_skin(skin_id: String) -> bool:
-	if not is_skin_unlocked(skin_id):
+	if not can_equip_skin(skin_id):
 		return false
 	if equipped_skin == skin_id:
 		return true
@@ -291,4 +289,10 @@ func _grant_achievement(ach: Dictionary) -> void:
 	var aid := String(ach["id"])
 	unlocked_achievements[aid] = true
 	var art_id := String(ach.get("reward_art", ""))
+	var cnt := unlocked_achievement_count()
+	for a: Dictionary in SkinCatalog.ARTWORKS:
+		var req := int(a.get("unlock_achievements", 0))
+		if req > 0 and req == cnt:
+			art_id = String(a["id"])
+			break
 	achievement_unlocked.emit(ach, art_id)

@@ -266,6 +266,7 @@ func _ready() -> void:
 				menu.reveal_ui(0.0, clampf((_intro_shot_t - OpeningIntro.T_HANDOFF) / 0.45, 0.0, 1.0))
 		elif not _shot and not _pause_demo and not _restart_demo and not _achievements_demo \
 				and not user_args.has("--settings") \
+				and not user_args.has("--wardrobe") \
 				and not user_args.has("--achievements") and not Settings.intro_seen:
 			menu.set_intro_blocking(true)
 			intro.play(false)
@@ -1139,7 +1140,7 @@ func _run_restart_demo() -> void:
 		get_tree().quit(1)
 
 
-## `-- --achievements-demo`：在内存测试沙盒内完整验证 5 张纪念画片资源、15 个成就解锁、Toast 停留时长与图鉴面板交互。
+## `-- --achievements-demo`：在内存测试沙盒内完整验证 6 套皮肤立绘/大头贴、20 个成就解锁、按成就数量解锁皮肤、换装与设置→成就交互。
 func _run_achievements_demo() -> void:
 	var st := {"ok": true}
 	var fail := func(msg: String) -> void:
@@ -1149,22 +1150,27 @@ func _run_achievements_demo() -> void:
 
 	Progress.begin_test_sandbox()
 
-	# 1. 所有 5 张纪念画片预览图资源必须存在，且主角保持默认精修动作帧（8/10/10）
+	# 1. 所有 6 套皮肤全身立绘 & 正面大头贴资源必须存在，且主角保持默认精修动作帧（8/10/10）
+	if SkinCatalog.ARTWORKS.size() != 6:
+		fail.call("皮肤总数应为 6，实际=%d" % SkinCatalog.ARTWORKS.size())
 	for a: Dictionary in SkinCatalog.ARTWORKS:
 		var pv := String(a["preview"])
+		var av := String(a.get("avatar", ""))
 		if not ResourceLoader.exists(pv):
-			fail.call("缺少纪念画片: " + pv)
+			fail.call("缺少皮肤立绘: " + pv)
+		if av == "" or not ResourceLoader.exists(av):
+			fail.call("缺少皮肤大头贴: " + av)
 	if not player._anim.loaded \
 			or player._anim.frame_count("run") != 8 \
 			or player._anim.frame_count("jump") != 10 \
 			or player._anim.frame_count("slide") != 10:
 		fail.call("默认深海女仆动作帧加载异常")
-	if SkinCatalog.ACHIEVEMENTS.size() != 15:
-		fail.call("成就总数应为 15，实际=%d" % SkinCatalog.ACHIEVEMENTS.size())
+	if SkinCatalog.ACHIEVEMENTS.size() != 20:
+		fail.call("成就总数应为 20，实际=%d" % SkinCatalog.ACHIEVEMENTS.size())
 
-	# 1b. 未解锁时不得装备 cozy_knit
+	# 1b. 成就数不足 3 时不得装备 cozy_knit
 	if Progress.set_equipped_skin("cozy_knit"):
-		fail.call("未解锁 初潜突围 时不应允许装备 cozy_knit")
+		fail.call("成就数不足 3 时不应允许装备 cozy_knit")
 
 	# 2. 练习模式下跑动 / 擦身 / 冲刺 / 追击 / 死亡不能计入正式成就
 	GameState.start_run(GameState.Mode.PRACTICE)
@@ -1180,12 +1186,14 @@ func _run_achievements_demo() -> void:
 	GameState.start_run(GameState.Mode.NORMAL)
 	GameState.add_distance(200.0 * 64.0)
 	GameState.player_hit.emit("obstacle")
-	GameState.add_distance(400.0 * 64.0) # 共 600m（解锁初潜突围 & 深海长泳），但撞过障不应解锁无伤游侠
+	GameState.add_distance(400.0 * 64.0) # 共 600m（解锁初潜突围 & 深海长泳 = 2个成就），撞过障不解锁无伤游侠
 	await get_tree().process_frame
 	if not Progress.is_achievement_unlocked("ach_dive_300m") or not Progress.is_achievement_unlocked("ach_dive_600m"):
 		fail.call("600m 未解锁 初潜突围 或 深海长泳")
 	if Progress.is_achievement_unlocked("ach_nohit_500m"):
 		fail.call("局内撞障后跑满 600m 不应解锁 无伤游侠")
+	if Progress.is_skin_unlocked("cozy_knit"):
+		fail.call("只有 2 个成就时不应提前解锁 cozy_knit（需 3 个）")
 	if not _toast.is_showing():
 		fail.call("成就解锁后 Toast 未弹出")
 	# 验证 Toast 至少稳定停留且在 >1.2s 后仍然完全可见（未提前淡出消失）
@@ -1195,19 +1203,21 @@ func _run_achievements_demo() -> void:
 			_toast.is_showing(), _toast._card.modulate.a, _toast._holder.position.y
 		])
 
-	# 3b. 新开一局零撞障跑满 1500m + 单局 10 擦身 + 5 冲刺 + 摆脱追击，触发技巧与追击类成就
+	# 3b. 新开一局零撞障跑满 1500m + 单局 10 擦身(累计100擦身) + 单局 50 冲刺 + 摆脱追击，触发第3+成就及全部技巧/追击类成就
 	GameState.start_run(GameState.Mode.NORMAL)
 	GameState.add_distance(500.0 * 64.0)
 	if not Progress.is_achievement_unlocked("ach_nohit_500m"):
 		fail.call("零撞障跑满 500m 应解锁 无伤游侠")
+	if not Progress.is_skin_unlocked("cozy_knit"):
+		fail.call("累计 3 个成就后应解锁 cozy_knit")
 	for _i in 10:
 		GameState.near_miss_awarded.emit()
 	if not Progress.is_achievement_unlocked("ach_nearmiss_run_10"):
 		fail.call("单局 10 次擦身未解锁 刀尖圆舞曲")
-	for _i in 10:
+	for _i in 90:
 		GameState.near_miss_awarded.emit()
-	if not Progress.is_achievement_unlocked("ach_nearmiss_20"):
-		fail.call("累计 20 次擦身未解锁 贴脸舞者")
+	if not Progress.is_achievement_unlocked("ach_nearmiss_20") or not Progress.is_achievement_unlocked("ach_nearmiss_100"):
+		fail.call("累计 100 次擦身未解锁 贴脸舞者 或 浪尖舞王")
 	for _i in 4:
 		GameState.dash_started.emit()
 	GameState.add_distance(500.0 * 64.0) # 1000m 但只有 4 冲刺 -> 不解锁甩尾大师
@@ -1220,9 +1230,11 @@ func _run_achievements_demo() -> void:
 	if not Progress.is_achievement_unlocked("ach_dive_1500m"):
 		fail.call("1500m 未解锁 无底深潜者")
 	for _i in 45:
-		GameState.dash_started.emit() # 累计 5+45=50 次 -> 解锁深海疾风 & 涡轮鲸娘
-	if not Progress.is_achievement_unlocked("ach_dash_15") or not Progress.is_achievement_unlocked("ach_dash_50"):
-		fail.call("累计 50 次冲刺未解锁 深海疾风 或 涡轮鲸娘")
+		GameState.dash_started.emit() # 单局&累计 50 次 -> 解锁极限推进 & 深海疾风 & 涡轮鲸娘
+	if not Progress.is_achievement_unlocked("ach_dash_run_8") \
+			or not Progress.is_achievement_unlocked("ach_dash_15") \
+			or not Progress.is_achievement_unlocked("ach_dash_50"):
+		fail.call("冲刺成就（极限推进 / 深海疾风 / 涡轮鲸娘）未解锁")
 	GameState.chase_ended.emit(0)
 	if not Progress.is_achievement_unlocked("ach_chase_escape_1"):
 		fail.call("首次摆脱追击未解锁 鲸口逃生")
@@ -1234,16 +1246,24 @@ func _run_achievements_demo() -> void:
 	if not Progress.is_achievement_unlocked("ach_easter_caught"):
 		fail.call("caught_by_chaser 未解锁彩蛋 美味大肥鱼")
 
-	# 4. 已完成 2 局，再补 10 局（1 次边界 + 10 次堕崖 -> 总计 12 局 >= 10）⇒ 全部 15 个成就均应解锁
-	for r in 11:
+	# 4. 补足累计 15000m 与累计 30 局（含 1 次边界 + 10+ 堕崖）⇒ 全部 20 个成就均应解锁
+	for r in 29:
 		GameState.start_run(GameState.Mode.NORMAL)
+		if r == 0:
+			GameState.add_distance(13000.0 * 64.0) # 累计达 15100m -> 解锁 全勤打工鱼(5000m) & 深海马拉松(15000m)
 		GameState.end_run("caught_by_wall" if r == 0 else "fell_into_chasm")
 	if Progress.unlocked_achievement_count() != SkinCatalog.ACHIEVEMENTS.size():
-		fail.call("全部 15 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
+		fail.call("全部 20 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
+	for a: Dictionary in SkinCatalog.ARTWORKS:
+		var sid := String(a["id"])
+		if not Progress.is_skin_unlocked(sid):
+			fail.call("全成就后皮肤未解锁: " + sid)
 
-	# 5. UI 面板与换装校验（验证切换到 cozy_knit 后 8/10/10 帧可正常加载）
+	# 5. UI 面板与换装校验（验证切换到 cozy_knit 后 8/10/10 帧可正常加载；待开发皮肤不得装备）
 	if not Progress.set_equipped_skin("cozy_knit"):
-		fail.call("解锁 初潜突围 后应可装备 cozy_knit")
+		fail.call("满 3 个成就后应可装备 cozy_knit")
+	if Progress.set_equipped_skin("burger_crew"):
+		fail.call("实机动作待开发的 burger_crew 不应允许装备出战")
 	if not player._anim.loaded \
 			or player._anim.frame_count("run") != 8 \
 			or player._anim.frame_count("jump") != 10 \
@@ -1252,18 +1272,34 @@ func _run_achievements_demo() -> void:
 	Progress.set_equipped_skin("default")
 	GameState.to_menu()
 	await get_tree().process_frame
-	menu._choose(2) # 成就
+	menu._choose(2) # 3 换装
 	await get_tree().process_frame
-	if not menu._achievements.visible:
-		fail.call("主菜单选 3 成就 未打开 AchievementsPanel")
+	if not menu._wardrobe.visible:
+		fail.call("主菜单选 3 换装 未打开 WardrobePanel")
 	_tap(KEY_ESCAPE)
 	await get_tree().process_frame
-	if menu._achievements.visible:
-		fail.call("ESC 未关闭 AchievementsPanel")
+	if menu._wardrobe.visible:
+		fail.call("ESC 未关闭 WardrobePanel")
 
+	var has_ach_row := false
 	for row: Dictionary in menu._settings._rows:
 		if String(row["id"]) == "achievements":
-			fail.call("SettingsPanel 不应保留重复的 achievements 行")
+			has_ach_row = true
+	if not has_ach_row:
+		fail.call("SettingsPanel 应包含 achievements（成就图鉴）行")
+	menu._choose(3) # 4 设置
+	await get_tree().process_frame
+	menu._settings.open("achievements")
+	menu._settings._adjust(menu._settings._sel, 1)
+	await get_tree().process_frame
+	if not menu._achievements.visible:
+		fail.call("设置面板选择成就图鉴未打开 AchievementsPanel")
+	_tap(KEY_ESCAPE)
+	await get_tree().process_frame
+	if menu._achievements.visible or not menu._settings.visible:
+		fail.call("从成就面板按 ESC 应退回 SettingsPanel")
+	_tap(KEY_ESCAPE)
+	await get_tree().process_frame
 
 	Progress.end_test_sandbox()
 	if st["ok"]:

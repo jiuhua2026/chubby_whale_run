@@ -1,13 +1,13 @@
 {
   "action": "jump",
-  "source": "cozy_jump_ahoge_fixed.png",
+  "source": "cozy_knit_jump_spritesheet.png",
   "sourceSize": [
-    2048,
-    2048
+    1024,
+    1024
   ],
-  "sourceScale": 4.08,
+  "sourceScale": 1.84,
   "normalizedScale": 1.0,
-  "resampleFactor": 0.245098,
+  "resampleFactor": 0.543478,
   "fps": 12,
   "colorMatch": {
     "method": "histogram_specification(RGB→HSV-SV)",
@@ -19,19 +19,19 @@
     {
       "index": 0,
       "y": [
-        218,
-        789
+        112,
+        398
       ],
-      "anchorY": 193.38,
+      "anchorY": 216.3,
       "frames": 5
     },
     {
       "index": 1,
       "y": [
-        1118,
-        1734
+        573,
+        862
       ],
-      "anchorY": 425.0,
+      "anchorY": 468.48,
       "frames": 5
     }
   ],
@@ -40,171 +40,171 @@
       "index": 0,
       "band": 0,
       "file": "jump_00.png",
-      "w": 88,
-      "h": 108,
-      "anchorX": 48.5,
-      "anchorY": 107.6,
-      "anchorYBand": 107.6,
+      "w": 108,
+      "h": 103,
+      "anchorX": 60.05,
+      "anchorY": 102.72,
+      "anchorYBand": 103.8,
       "srcBbox": [
-        28,
-        350,
-        387,
-        789
+        5,
+        207,
+        202,
+        396
       ],
-      "srcCx": 229.0
+      "srcCx": 115.5
     },
     {
       "index": 1,
       "band": 0,
       "file": "jump_01.png",
-      "w": 90,
-      "h": 125,
-      "anchorX": 50.5,
-      "anchorY": 124.75,
-      "anchorYBand": 125.49,
+      "w": 101,
+      "h": 143,
+      "anchorX": 51.09,
+      "anchorY": 142.93,
+      "anchorYBand": 144.02,
       "srcBbox": [
-        416,
-        277,
-        783,
-        786
+        212,
+        133,
+        396,
+        396
       ],
-      "srcCx": 626.5
+      "srcCx": 306.0
     },
     {
       "index": 2,
       "band": 0,
       "file": "jump_02.png",
-      "w": 87,
-      "h": 131,
-      "anchorX": 46.5,
-      "anchorY": 130.64,
-      "anchorYBand": 139.95,
+      "w": 96,
+      "h": 143,
+      "anchorX": 48.37,
+      "anchorY": 142.39,
+      "anchorYBand": 155.43,
       "srcBbox": [
-        827,
-        218,
-        1181,
-        751
+        414,
+        112,
+        590,
+        374
       ],
-      "srcCx": 1020.5
+      "srcCx": 503.0
     },
     {
       "index": 3,
       "band": 0,
       "file": "jump_03.png",
-      "w": 84,
-      "h": 116,
-      "anchorX": 44.5,
-      "anchorY": 116.18,
-      "anchorYBand": 132.11,
+      "w": 104,
+      "h": 139,
+      "anchorX": 54.35,
+      "anchorY": 138.59,
+      "anchorYBand": 140.76,
       "srcBbox": [
-        1226,
-        250,
-        1568,
-        724
+        600,
+        139,
+        790,
+        394
       ],
-      "srcCx": 1404.0
+      "srcCx": 700.0
     },
     {
       "index": 4,
       "band": 0,
       "file": "jump_04.png",
-      "w": 86,
-      "h": 119,
-      "anchorX": 45.5,
-      "anchorY": 118.63,
-      "anchorYBand": 139.46,
+      "w": 108,
+      "h": 148,
+      "anchorX": 54.35,
+      "anchorY": 147.28,
+      "anchorYBand": 147.28,
       "srcBbox": [
-        1640,
-        220,
-        1989,
-        704
+        813,
+        127,
+        1010,
+        398
       ],
-      "srcCx": 1823.0
+      "srcCx": 913.0
     },
     {
       "index": 5,
       "band": 1,
       "file": "jump_05.png",
-      "w": 85,
-      "h": 143,
-      "anchorX": 45.5,
-      "anchorY": 143.14,
-      "anchorYBand": 150.98,
+      "w": 101,
+      "h": 150,
+      "anchorX": 50.0,
+      "anchorY": 149.46,
+      "anchorYBand": 156.52,
       "srcBbox": [
-        26,
-        1118,
-        372,
-        1702
+        6,
+        574,
+        190,
+        849
       ],
-      "srcCx": 199.0
+      "srcCx": 98.0
     },
     {
       "index": 6,
       "band": 1,
       "file": "jump_06.png",
-      "w": 86,
-      "h": 144,
-      "anchorX": 46.5,
-      "anchorY": 143.63,
-      "anchorYBand": 150.98,
+      "w": 97,
+      "h": 153,
+      "anchorX": 48.37,
+      "anchorY": 152.72,
+      "anchorYBand": 157.07,
       "srcBbox": [
-        419,
-        1118,
-        769,
-        1704
+        212,
+        573,
+        390,
+        854
       ],
-      "srcCx": 594.0
+      "srcCx": 301.0
     },
     {
       "index": 7,
       "band": 1,
       "file": "jump_07.png",
-      "w": 90,
-      "h": 128,
-      "anchorX": 50.5,
-      "anchorY": 127.94,
-      "anchorYBand": 128.19,
+      "w": 107,
+      "h": 120,
+      "anchorX": 54.35,
+      "anchorY": 119.57,
+      "anchorYBand": 119.57,
       "srcBbox": [
-        826,
-        1211,
-        1191,
-        1733
+        409,
+        642,
+        605,
+        862
       ],
-      "srcCx": 1010.5
+      "srcCx": 509.0
     },
     {
       "index": 8,
       "band": 1,
       "file": "jump_08.png",
-      "w": 88,
-      "h": 115,
-      "anchorX": 48.5,
-      "anchorY": 115.2,
-      "anchorYBand": 115.44,
+      "w": 108,
+      "h": 97,
+      "anchorX": 58.42,
+      "anchorY": 96.74,
+      "anchorYBand": 97.28,
       "srcBbox": [
-        1238,
-        1263,
-        1597,
-        1733
+        615,
+        683,
+        813,
+        861
       ],
-      "srcCx": 1432.5
+      "srcCx": 722.5
     },
     {
       "index": 9,
       "band": 1,
       "file": "jump_09.png",
-      "w": 85,
-      "h": 134,
-      "anchorX": 45.5,
-      "anchorY": 134.07,
-      "anchorYBand": 134.07,
+      "w": 99,
+      "h": 138,
+      "anchorX": 58.15,
+      "anchorY": 136.96,
+      "anchorYBand": 136.96,
       "srcBbox": [
-        1655,
-        1187,
-        2000,
-        1734
+        821,
+        610,
+        1003,
+        862
       ],
-      "srcCx": 1838.0
+      "srcCx": 928.0
     }
   ]
 }
