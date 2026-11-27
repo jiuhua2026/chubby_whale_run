@@ -40,6 +40,13 @@ const PROC_TRIES := 8
 const LIBRARY_MIX := 0.12
 ## 手工插桩队列：非空时优先按剧本出块（用于高潮追击段）
 var _script_queue: Array[String] = []
+## 二阶段召弹试炼期：清空前方离屏旧块并改铺平坦无障碍直道，避免地面障碍+飞弹冲突
+var barrage_safe_mode := false
+## 跨块植物刷新调度：约 1500m 采满 9 格、三种基础植物纯等概率随机（防连续同种）
+var _next_plant_col := 75
+var _last_plant_col := -100
+var _last_plant_id := ""
+var _pending_plant_id := ""
 ## 统计：每个模式被拒的原因，调参时非常有用
 var reject_stats := {}
 ## 统计：每个模式实际被用了多少次。理想分布是 tier 0 的模式随时间占比下降，
@@ -200,6 +207,7 @@ func _seed_from_args() -> int:
 
 func reset() -> void:
 	for c in _chunks:
+		remove_child(c)
 		c.queue_free()
 	_chunks.clear()
 	_next_col = 0
@@ -210,6 +218,11 @@ func reset() -> void:
 	_tail_gap_delta = 0
 	_last_name = ""
 	_script_queue.clear()
+	barrage_safe_mode = false
+	_next_plant_col = 75
+	_last_plant_col = -100
+	_last_plant_id = ""
+	_pending_plant_id = ""
 	_section = SECTION_SOLID
 	_section_left = 0
 	# 每局重抽一次「地形性格」。放在 reset 而不是 _ready：一局结束时重开要换性格，
@@ -269,6 +282,27 @@ func script_remaining() -> int:
 	return _script_queue.size()
 
 
+## 进入二阶段召弹试炼直道：裁掉尚未进入右侧屏幕的远端地形块，无缝接上平坦安全跑道
+func enter_barrage_runway(player_x: float) -> void:
+	barrage_safe_mode = true
+	_script_queue.clear()
+	var vis_right := player_x + 960.0
+	while _chunks.size() > 1 and float(_chunks[_chunks.size() - 1].start_col * GameConfig.TILE) > vis_right:
+		var removed: TerrainChunk = _chunks.pop_back()
+		removed.queue_free()
+	if not _chunks.is_empty():
+		var tail_ch: TerrainChunk = _chunks[_chunks.size() - 1]
+		_next_col = tail_ch.start_col + tail_ch.h.size()
+		var keep := mini(8, tail_ch.h.size())
+		_tail_h = tail_ch.h.slice(tail_ch.h.size() - keep, tail_ch.h.size())
+		_tail_b = tail_ch.b.slice(tail_ch.b.size() - keep, tail_ch.b.size())
+		_chasm_run = 0
+
+
+func exit_barrage_runway() -> void:
+	barrage_safe_mode = false
+
+
 func _find_pattern(name: String) -> Dictionary:
 	for p in _patterns:
 		if p["name"] == name:
@@ -324,6 +358,12 @@ func _append_chunk() -> bool:
 	# 放在最前面短路，连模式库和校验器都不用跑——观察模式下不该有任何随机性。
 	if flat_only:
 		_commit_flat()
+		return true
+
+	if barrage_safe_mode:
+		_commit_barrage_flat()
+		_section = SECTION_SOLID
+		_section_left = 2
 		return true
 
 	var tier := Difficulty.current_tier()
@@ -480,6 +520,77 @@ func _commit_flat() -> void:
 	_commit("test_flat", h, b)
 
 
+## 召弹试炼期无障碍安全直道（逐列平滑接回基准平地 level 0）
+func _commit_barrage_flat() -> void:
+	var h := PackedInt32Array()
+	var b := PackedInt32Array()
+	var cur := _tail_h[_tail_h.size() - 1] if _tail_h.size() > 0 else 0
+	for _i in GameConfig.chunk_cols:
+		if cur > 0:
+			cur -= 1
+		elif cur < 0:
+			cur += 1
+		h.append(cur)
+		b.append(0)
+	_commit("barrage_flat", h, b, false)
+
+
+func _pick_equal_plant() -> String:
+	var cands: Array[String] = []
+	for pid: String in GameState.PLANT_BASIC_IDS:
+		if pid != _last_plant_id:
+			cands.append(pid)
+	if cands.is_empty():
+		return "kelp"
+	return cands[_rng.randi_range(0, cands.size() - 1)]
+
+
+func _plan_chunk_plants(chunk_start: int, h: PackedInt32Array, b: PackedInt32Array, broken: bool) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if flat_only or barrage_safe_mode or GameState.is_sandbox():
+		return out
+	var chunk_end := chunk_start + h.size() - 1
+	while _next_plant_col < chunk_end:
+		if chunk_start + h.size() < 55:
+			_next_plant_col = maxi(_next_plant_col, 75)
+			break
+		var start_local := maxi(1, _next_plant_col - chunk_start)
+		if start_local >= h.size() - 1:
+			break
+		var pid := _pending_plant_id if _pending_plant_id != "" else _pick_equal_plant()
+		_pending_plant_id = ""
+		var chosen := -1
+		# 优先匹配贴合地形语义的地面落点（绝不悬浮在 LOW 障碍顶或掉入断崖坑内）
+		for c in range(start_local, h.size() - 1):
+			if h[c] > 0:
+				continue
+			if pid == "kelp" and b[c] == TerrainPatterns.OVERHEAD:
+				chosen = c
+				break
+			elif pid == "nori" and (h[c] <= -1 and b[c] == 0):
+				chosen = c
+				break
+			elif pid == "seaweed" and (broken and b[c] == 0):
+				chosen = c
+				break
+		if chosen < 0:
+			var gap_since_last := (chunk_start + start_local) - _last_plant_col
+			if gap_since_last >= 125 or _last_plant_col < 0:
+				for c in range(start_local, h.size() - 1):
+					if h[c] <= 0 and b[c] != TerrainPatterns.LOW:
+						chosen = c
+						break
+		if chosen < 0:
+			_pending_plant_id = pid
+			_next_plant_col = chunk_end
+			break
+		out.append({"col": chosen, "id": pid})
+		_last_plant_col = chunk_start + chosen
+		_last_plant_id = pid
+		_next_plant_col = _last_plant_col + _rng.randi_range(125, 165)
+	return out
+
+
 ## 决定接下来的这一段是实体段还是断桥段，并抽好它持续几块。
 ## 只在 `_section_left` 用完时调用（见 `_append_chunk` 第 1 步）。
 func _roll_section() -> void:
@@ -545,7 +656,8 @@ func _commit(name: String, h: PackedInt32Array, b: PackedInt32Array,
 	var chunk := TerrainChunk.new()
 	chunk.name = "Chunk_%d_%s" % [_next_col, name]
 	add_child(chunk)
-	chunk.setup(h, b, _next_col, broken)
+	var plant_spawns := _plan_chunk_plants(_next_col, h, b, broken)
+	chunk.setup(h, b, _next_col, broken, plant_spawns)
 	_chunks.append(chunk)
 
 	# 保留尾部若干列作为下一块的接缝上下文

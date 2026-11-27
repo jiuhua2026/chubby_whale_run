@@ -6,6 +6,8 @@ extends Node
 
 signal achievement_unlocked(ach: Dictionary, art_id: String)
 signal skin_changed(skin_id: String)
+signal shop_changed()
+signal meal_buff_changed(dish_id: String)
 
 const PATH := "user://progress.cfg"
 
@@ -13,6 +15,20 @@ var save_enabled := true
 
 var equipped_skin := "default"
 var unlocked_achievements := {}
+
+## v2.0 海洋植物仓库、鲸尾兜扩容等级与小店经营存档
+var ingredients := {"kelp": 0, "nori": 0, "seaweed": 0, "star_algae": 0}
+var cooler_upgrade_lv := 0
+var cooler_capacity := GameConfig.cooler_base_capacity
+var total_boss_enrages := 0
+var shell_coins := 0
+var shop_fryer_lv := 0
+var shop_decor_lv := 0
+var active_meal_buff := ""
+var shop_starter_claimed := false
+var shop_total_served := 0
+var shop_best_revenue := 0
+var shop_disguise_served := 0
 
 var stats := {
 	"best_run_dist_m": 0,
@@ -27,6 +43,9 @@ var stats := {
 	"caught_count": 0,
 	"chasm_count": 0,
 	"wall_count": 0,
+	"total_star_algae": 0,
+	"total_proj_dodged": 0,
+	"total_shop_crisp": 0,
 }
 
 ## 本局临时进度（每次正常模式开局重置）
@@ -49,6 +68,7 @@ func _ready() -> void:
 	GameState.dash_started.connect(_on_dash)
 	GameState.player_hit.connect(_on_player_hit)
 	GameState.chase_ended.connect(_on_chase_ended)
+	GameState.boss_enraged_started.connect(_on_boss_enraged)
 	GameState.run_ended.connect(_on_run_ended)
 	GameState.menu_opened.connect(_on_menu_opened)
 
@@ -73,6 +93,22 @@ func load_progress() -> void:
 	var eq := String(cf.get_value("skins", "equipped", "default"))
 	equipped_skin = eq if can_equip_skin(eq) else "default"
 
+	for pk: String in ingredients.keys():
+		ingredients[pk] = maxi(0, int(cf.get_value("shop", "ing_" + pk, 0)))
+	# 以升级等级而非写死旧总格数持久化，自动修正旧版残留的 12 格存档为 9+1=10 格
+	cooler_upgrade_lv = clampi(int(cf.get_value("shop", "cooler_upgrade_lv", 0)), 0, 3)
+	cooler_capacity = GameConfig.cooler_base_capacity + cooler_upgrade_lv * 2
+	total_boss_enrages = maxi(0, int(cf.get_value("shop", "total_boss_enrages", 0)))
+	shell_coins = maxi(0, int(cf.get_value("shop", "shell_coins", 0)))
+	shop_fryer_lv = clampi(int(cf.get_value("shop", "shop_fryer_lv", 0)), 0, 2)
+	shop_decor_lv = clampi(int(cf.get_value("shop", "shop_decor_lv", 0)), 0, 2)
+	var mb := String(cf.get_value("shop", "active_meal_buff", ""))
+	active_meal_buff = mb if (mb != "" and not ShopCatalog.get_dish(mb).is_empty()) else ""
+	shop_starter_claimed = bool(cf.get_value("shop", "shop_starter_claimed", false))
+	shop_total_served = maxi(0, int(cf.get_value("shop", "shop_total_served", 0)))
+	shop_best_revenue = maxi(0, int(cf.get_value("shop", "shop_best_revenue", 0)))
+	shop_disguise_served = maxi(0, int(cf.get_value("shop", "shop_disguise_served", 0)))
+
 
 func save_progress() -> void:
 	if not save_enabled or not Settings.record_save_enabled:
@@ -82,12 +118,38 @@ func save_progress() -> void:
 	cf.set_value("skins", "equipped", equipped_skin)
 	for k: String in stats.keys():
 		cf.set_value("stats", k, int(stats[k]))
+	for pk: String in ingredients.keys():
+		cf.set_value("shop", "ing_" + pk, int(ingredients[pk]))
+	cf.set_value("shop", "cooler_upgrade_lv", cooler_upgrade_lv)
+	cf.set_value("shop", "cooler_capacity", cooler_capacity)
+	cf.set_value("shop", "total_boss_enrages", total_boss_enrages)
+	cf.set_value("shop", "shell_coins", shell_coins)
+	cf.set_value("shop", "shop_fryer_lv", shop_fryer_lv)
+	cf.set_value("shop", "shop_decor_lv", shop_decor_lv)
+	cf.set_value("shop", "active_meal_buff", active_meal_buff)
+	cf.set_value("shop", "shop_starter_claimed", shop_starter_claimed)
+	cf.set_value("shop", "shop_total_served", shop_total_served)
+	cf.set_value("shop", "shop_best_revenue", shop_best_revenue)
+	cf.set_value("shop", "shop_disguise_served", shop_disguise_served)
 	cf.save(PATH)
 
 
 func _reset_in_memory() -> void:
 	equipped_skin = "default"
 	unlocked_achievements = {}
+	for pk: String in ingredients.keys():
+		ingredients[pk] = 0
+	cooler_upgrade_lv = 0
+	cooler_capacity = GameConfig.cooler_base_capacity
+	total_boss_enrages = 0
+	shell_coins = 0
+	shop_fryer_lv = 0
+	shop_decor_lv = 0
+	active_meal_buff = ""
+	shop_starter_claimed = false
+	shop_total_served = 0
+	shop_best_revenue = 0
+	shop_disguise_served = 0
 	for k: String in stats.keys():
 		stats[k] = 0
 	_run_dist_m = 0
@@ -138,6 +200,17 @@ func unlocked_achievement_count() -> int:
 	return unlocked_achievements.size()
 
 
+func _stat_value(stat_key: String) -> int:
+	match stat_key:
+		"total_boss_enrages":
+			return total_boss_enrages
+		"shop_total_served":
+			return shop_total_served
+		"shop_disguise_served":
+			return shop_disguise_served
+	return int(stats.get(stat_key, 0))
+
+
 func achievement_progress(ach_id: String) -> Dictionary:
 	var ach := SkinCatalog.get_achievement(ach_id)
 	if ach.is_empty():
@@ -158,7 +231,7 @@ func achievement_progress(ach_id: String) -> Dictionary:
 		var txt := ("已达成" if done else "最佳 %d/%d m · 冲刺 %d/%d 次" % [cur_m, target, cur_d, sub_t])
 		return {"cur": cur_m, "target": target, "sub_cur": cur_d, "sub_target": sub_t, "done": done, "ratio": r, "text": txt}
 
-	var cur := mini(target, int(stats.get(stat_key, 0)))
+	var cur := mini(target, _stat_value(stat_key))
 	if done:
 		cur = target
 	var ratio := clampf(float(cur) / float(maxi(1, target)), 0.0, 1.0)
@@ -168,7 +241,7 @@ func achievement_progress(ach_id: String) -> Dictionary:
 
 # ---------------------------------------------------------------- 局内统计与解锁判定
 func _can_track() -> bool:
-	if GameState.mode != GameState.Mode.NORMAL:
+	if not GameState.is_savable_mode():
 		return false
 	if _force_track_for_test:
 		return true
@@ -249,10 +322,21 @@ func _on_chase_ended(_index: int) -> void:
 	_check_unlocks()
 
 
+func _on_boss_enraged() -> void:
+	if not _can_track() or not _tracking_run:
+		return
+	total_boss_enrages += 1
+	_check_unlocks()
+
+
 func _on_run_ended(reason: String, _distance: float, _score: int) -> void:
 	if not _can_track() or not _tracking_run:
 		return
 	_tracking_run = false
+	for pk: String in GameState.run_plants.keys():
+		ingredients[pk] = int(ingredients.get(pk, 0)) + int(GameState.run_plants[pk])
+	stats["total_star_algae"] = int(stats.get("total_star_algae", 0)) + int(GameState.run_plants.get("star_algae", 0))
+	stats["total_proj_dodged"] = int(stats.get("total_proj_dodged", 0)) + int(GameState.run_proj_dodged)
 	stats["total_runs"] = int(stats["total_runs"]) + 1
 	match reason:
 		"caught_by_chaser":
@@ -277,7 +361,7 @@ func _check_unlocks() -> void:
 		if stat_key == "combo_1000m_5dash":
 			ok = _run_dist_m >= target and _run_dashes >= int(ach.get("sub_target", 5))
 		else:
-			ok = int(stats.get(stat_key, 0)) >= target
+			ok = _stat_value(stat_key) >= target
 		if ok:
 			_grant_achievement(ach)
 			changed = true
@@ -296,3 +380,131 @@ func _grant_achievement(ach: Dictionary) -> void:
 			art_id = String(a["id"])
 			break
 	achievement_unlocked.emit(ach, art_id)
+
+
+# ---------------------------------------------------------------- v2.0 深海鲸堡小店持久化接口
+func grant_shop_starter_if_needed() -> bool:
+	if shop_starter_claimed:
+		return false
+	shop_starter_claimed = true
+	ingredients["kelp"] = int(ingredients.get("kelp", 0)) + 3
+	ingredients["nori"] = int(ingredients.get("nori", 0)) + 2
+	ingredients["seaweed"] = int(ingredients.get("seaweed", 0)) + 2
+	save_progress()
+	shop_changed.emit()
+	return true
+
+
+func has_ingredients(cost: Dictionary) -> bool:
+	for k: String in cost.keys():
+		if int(ingredients.get(k, 0)) < int(cost[k]):
+			return false
+	return true
+
+
+func spend_ingredients(cost: Dictionary) -> bool:
+	if not has_ingredients(cost):
+		return false
+	for k: String in cost.keys():
+		ingredients[k] = maxi(0, int(ingredients.get(k, 0)) - int(cost[k]))
+	save_progress()
+	shop_changed.emit()
+	return true
+
+
+func refund_ingredients(cost: Dictionary) -> void:
+	for k: String in cost.keys():
+		ingredients[k] = int(ingredients.get(k, 0)) + int(cost[k])
+	save_progress()
+	shop_changed.emit()
+
+
+func add_shell_coins(delta: int) -> void:
+	shell_coins = maxi(0, shell_coins + delta)
+	save_progress()
+	shop_changed.emit()
+
+
+func set_active_meal_buff(dish_id: String) -> void:
+	active_meal_buff = dish_id if (dish_id != "" and not ShopCatalog.get_dish(dish_id).is_empty()) else ""
+	save_progress()
+	meal_buff_changed.emit(active_meal_buff)
+	shop_changed.emit()
+
+
+func consume_active_meal_buff() -> String:
+	var dish_id := active_meal_buff
+	if dish_id == "":
+		return ""
+	active_meal_buff = ""
+	save_progress()
+	meal_buff_changed.emit("")
+	shop_changed.emit()
+	return dish_id
+
+
+func upgrade_shop_track(track_id: String) -> bool:
+	var idx := -1
+	for i in ShopCatalog.UPGRADES.size():
+		if String(ShopCatalog.UPGRADES[i]["id"]) == track_id:
+			idx = i
+			break
+	if idx < 0:
+		return false
+	var spec: Dictionary = ShopCatalog.UPGRADES[idx]
+	var max_lv := int(spec["max_lv"])
+	var costs: Array = spec["costs"]
+	var cur := 0
+	match track_id:
+		"fryer":
+			cur = shop_fryer_lv
+		"decor":
+			cur = shop_decor_lv
+		"cooler":
+			cur = cooler_upgrade_lv
+	if cur >= max_lv or cur >= costs.size():
+		return false
+	var price := int(costs[cur])
+	if shell_coins < price:
+		return false
+	shell_coins -= price
+	match track_id:
+		"fryer":
+			shop_fryer_lv += 1
+		"decor":
+			shop_decor_lv += 1
+		"cooler":
+			cooler_upgrade_lv += 1
+			cooler_capacity = GameConfig.cooler_base_capacity + cooler_upgrade_lv * 2
+	save_progress()
+	shop_changed.emit()
+	return true
+
+
+func record_shift_result(served: int, revenue: int, disguise_hits: int, crisp_hits: int = 0) -> void:
+	shop_total_served += maxi(0, served)
+	if revenue > shop_best_revenue:
+		shop_best_revenue = revenue
+	shop_disguise_served += maxi(0, disguise_hits)
+	stats["total_shop_crisp"] = int(stats.get("total_shop_crisp", 0)) + maxi(0, crisp_hits)
+	_check_unlocks()
+	save_progress()
+	shop_changed.emit()
+
+
+## 营业中单次上菜或金脆即时累计小店成就计数，无需等到打烊才弹窗。
+func record_shop_instant(served_delta: int = 0, disguise_delta: int = 0, crisp_delta: int = 0) -> void:
+	var dirty := false
+	if served_delta > 0:
+		shop_total_served += served_delta
+		dirty = true
+	if disguise_delta > 0:
+		shop_disguise_served += disguise_delta
+		dirty = true
+	if crisp_delta > 0:
+		stats["total_shop_crisp"] = int(stats.get("total_shop_crisp", 0)) + crisp_delta
+		dirty = true
+	if dirty:
+		_check_unlocks()
+		save_progress()
+		shop_changed.emit()

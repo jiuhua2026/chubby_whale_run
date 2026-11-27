@@ -174,10 +174,14 @@ static var debug_low_variant := -1
 ##
 ## ⚠ 语义上也正好：断桥段本来就该是"断掉的桥"，实体段的坑本来就是"点缀起伏"。
 var broken := false
+var _broken_cols := {}
+var _hazard_areas := {}
 
 
 func setup(p_h: PackedInt32Array, p_b: PackedInt32Array, p_start_col: int,
-		p_broken := false) -> void:
+		p_broken := false, plant_spawns: Array[Dictionary] = []) -> void:
+	_broken_cols.clear()
+	_hazard_areas.clear()
 	h = p_h
 	b = p_b
 	start_col = p_start_col
@@ -187,6 +191,7 @@ func setup(p_h: PackedInt32Array, p_b: PackedInt32Array, p_start_col: int,
 	collision_mask = 0
 	position = Vector2(float(start_col * _tile), 0.0)
 	_build()
+	_spawn_plants(plant_spawns)
 	queue_redraw()
 
 
@@ -540,8 +545,9 @@ func _add_hazard_area(col: int, top_y: float, height: float, kind: String) -> vo
 	cs.shape = sh
 	cs.position = Vector2(cx, cy)
 	area.add_child(cs)
-	area.body_entered.connect(_on_hazard_body_entered.bind(kind))
+	area.body_entered.connect(_on_hazard_body_entered.bind(kind, col))
 	add_child(area)
+	_hazard_areas[col] = area
 
 func _add_near_gate(c0: int, c1: int, kind: int) -> void:
 	# 擦身判定门：见 `NearMissGate` 的文件头（旧做法为什么在两种障碍上给出相反的错误）。
@@ -558,9 +564,54 @@ func _add_near_gate(c0: int, c1: int, kind: int) -> void:
 	add_child(gate)
 
 
-func _on_hazard_body_entered(body: Node2D, kind: String) -> void:
-	if body is Player:
-		(body as Player).take_hit(kind)
+func _on_hazard_body_entered(body: Node2D, kind: String, col: int) -> void:
+	if not (body is Player):
+		return
+	var p := body as Player
+	if p.is_dashing() and kind == "low" and not _broken_cols.has(col):
+		_break_hazard_col(col)
+		return
+	p.take_hit(kind)
+
+
+func _break_hazard_col(col: int) -> void:
+	_broken_cols[col] = true
+	if _hazard_areas.has(col):
+		var a: Area2D = _hazard_areas[col]
+		if is_instance_valid(a):
+			a.set_deferred("monitoring", false)
+	GameState.run_obstacles_broken += 1
+	GameState.score += 35
+	GameState.score_changed.emit(GameState.score)
+	AudioManager.play_sfx("hit", -3.0, 1.35)
+	var host := get_parent() if get_parent() != null else self
+	var fx := PixelFxPlayer.new()
+	fx.z_index = 4
+	fx.scale = Vector2(0.78, 0.78)
+	fx.modulate = Color(0.95, 0.98, 1.0, 0.96)
+	var wx := global_position.x + (float(col) + 0.5) * float(_tile)
+	var wy := global_position.y + surface_y_of(col) - 16.0
+	fx.position = Vector2(wx, wy)
+	host.add_child(fx)
+	if not fx.play("action/obstacle_break", true, 1.65, 0.0, true):
+		fx.queue_free()
+	queue_redraw()
+
+
+func _spawn_plants(plant_spawns: Array[Dictionary]) -> void:
+	if GameState.is_sandbox() or plant_spawns.is_empty():
+		return
+	var tile := float(_tile)
+	for sp: Dictionary in plant_spawns:
+		var c := int(sp.get("col", -1))
+		var pid := String(sp.get("id", ""))
+		if c < 0 or c >= h.size() or pid == "":
+			continue
+		# 全部贴地面/平台石板生长（绝不悬在陆地矮障碍上方或半空）
+		var wy := surface_y_of(c) - 24.0
+		var pick := PlantPickup.new()
+		pick.setup(pid, Vector2((float(c) + 0.5) * tile, wy), float((start_col + c) % 11) * 0.5)
+		add_child(pick)
 
 
 # ---------------------------------------------------------------- 地面与断崖
@@ -576,7 +627,7 @@ func _draw() -> void:
 		_draw_plates(tile, false)
 
 	for c in h.size():
-		if b[c] == TerrainPatterns.LOW:
+		if b[c] == TerrainPatterns.LOW and not _broken_cols.has(c):
 			var vi := _variant_of(start_col + c, LOW_TEX.size())
 			if debug_low_variant >= 0:
 				vi = debug_low_variant % LOW_TEX.size()

@@ -3,12 +3,17 @@ extends CanvasLayer
 
 ## 像素风深海 HUD：去边框化左上浮标 + 渐变预警条 + 沉船石板死亡结算面板
 
+signal shop_requested()
+
 var _hud_box: VBoxContainer
 var _lbl_dist_val: Label
 var _lbl_score_val: Label
 var _bar_charge: ChargeBar
 var _badge_space: PanelContainer
 var _lbl_charge_state: Label
+var _lbl_cooler: Label
+var _lbl_drop_toast: Label
+var _drop_toast_t := 0.0
 var _lbl_perf: Label
 
 var _lbl_mode: Label
@@ -19,10 +24,12 @@ var _warn_sb_amber: StyleBoxTexture
 var _warn_sb_crimson: StyleBoxTexture
 var _warn_icon: TextureRect
 var _lbl_warn: Label
+var _boss_bar: BossHpBar
 var _tex_warn_amber: Texture2D
 var _tex_warn_chase: Texture2D
 var _warn_chase := false
 var _warn_t := 0.0
+var _enrage_banner_t := 0.0
 
 var _end_root: Control
 var _end_dim: ColorRect
@@ -75,6 +82,8 @@ class ChargeBar extends Control:
 		draw_texture_rect(tex_base, Rect2(0.0, 0.0, TUBE_W, TUBE_H), false)
 
 		var n := maxi(1, max_charge)
+		var cell_w := CELL_W if n == 3 else floorf((116.0 - float(n - 1) * 4.0) / float(n))
+		var cell_stride := CELL_STRIDE if n == 3 else (cell_w + 4.0)
 		var full := (charge >= n) or dashing
 		var row_cols := [
 			Color(0.94, 1.00, 1.00) if full else Color(0.55, 0.94, 1.00),
@@ -99,8 +108,8 @@ class ChargeBar extends Control:
 			if ratio <= 0.0:
 				continue
 
-			var x0 := CELL_X0 + i * CELL_STRIDE
-			var px_w := floorf((CELL_W * ratio) * 0.5) * 2.0
+			var x0 := CELL_X0 + i * cell_stride
+			var px_w := floorf((cell_w * ratio) * 0.5) * 2.0
 			if px_w <= 0.0:
 				continue
 
@@ -129,6 +138,46 @@ class ChargeBar extends Control:
 		if charge >= n and not dashing:
 			var glow_a := 0.30 + 0.20 * sin(_anim_t * 5.0)
 			draw_rect(Rect2(8.0, 4.0, 120.0, 18.0), Color(0.55, 0.96, 1.0, glow_a), false, 2.0)
+
+
+class BossHpBar extends Control:
+	var hp := 3
+	var max_hp := 3
+	var enraged := false
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		if visible:
+			_t += delta
+			queue_redraw()
+
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		if w <= 4.0 or h <= 4.0:
+			return
+		draw_rect(Rect2(0, 0, w, h), Color(0.03, 0.04, 0.08, 0.88))
+		if enraged:
+			var p := 0.5 + 0.5 * sin(_t * 6.0)
+			draw_rect(Rect2(2, 2, w - 4, h - 4), Color(0.06, 0.02, 0.08, 0.96))
+			# 黑血锁血质感斜纹 + 暗红脉动边框
+			var x := 4.0
+			while x < w - 8.0:
+				draw_rect(Rect2(x, 3, 6, h - 6), Color(0.16, 0.04, 0.14, 0.72))
+				x += 14.0
+			draw_rect(Rect2(0, 0, w, h), Color(0.95, 0.16, 0.38, 0.65 + 0.30 * p), false, 2.0)
+		else:
+			var segs := maxi(1, max_hp)
+			var gap := 4.0
+			var seg_w := (w - 4.0 - gap * float(segs - 1)) / float(segs)
+			for i in segs:
+				var rx := 2.0 + float(i) * (seg_w + gap)
+				if i < hp:
+					draw_rect(Rect2(rx, 2, seg_w, h - 4), Color(0.94, 0.22, 0.28, 0.96))
+					draw_rect(Rect2(rx, 2, seg_w, 3), Color(1.0, 0.62, 0.64, 0.75))
+				else:
+					draw_rect(Rect2(rx, 2, seg_w, h - 4), Color(0.18, 0.08, 0.10, 0.65))
+			draw_rect(Rect2(0, 0, w, h), Color(0.92, 0.44, 0.48, 0.75), false, 1.5)
 
 
 static func _load_tex(path: String) -> Texture2D:
@@ -216,6 +265,8 @@ func _ready() -> void:
 	GameState.run_ended.connect(_on_run_ended)
 	GameState.run_started.connect(_on_run_started)
 	GameState.menu_opened.connect(_on_menu_opened)
+	GameState.boss_enraged_started.connect(_on_boss_enraged)
+	GameState.plant_dropped.connect(_on_plant_dropped)
 	get_viewport().size_changed.connect(_fit_end_root)
 	_fit_end_root()
 	call_deferred("_fit_end_root")
@@ -313,6 +364,13 @@ func _build() -> void:
 	_lbl_charge_state.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	charge_row.add_child(_lbl_charge_state)
 
+	_lbl_cooler = _make_label("保鲜箱  0 / 12", 13, Color(0.64, 0.92, 0.80), 3, 1)
+	_hud_box.add_child(_lbl_cooler)
+
+	_lbl_drop_toast = _make_label("", 13, Color(1.0, 0.62, 0.42), 3, 1)
+	_lbl_drop_toast.visible = false
+	_hud_box.add_child(_lbl_drop_toast)
+
 	_lbl_perf = _make_label("", 12, Color(0.68, 0.86, 0.72), 3, 1)
 	_lbl_perf.visible = false
 	_hud_box.add_child(_lbl_perf)
@@ -354,10 +412,14 @@ func _build() -> void:
 	_warn_box.visible = false
 	add_child(_warn_box)
 
+	var warn_vbox := VBoxContainer.new()
+	warn_vbox.add_theme_constant_override("separation", 4)
+	_warn_box.add_child(warn_vbox)
+
 	var warn_row := HBoxContainer.new()
 	warn_row.add_theme_constant_override("separation", 10)
 	warn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_warn_box.add_child(warn_row)
+	warn_vbox.add_child(warn_row)
 
 	_warn_icon = TextureRect.new()
 	_warn_icon.texture = _tex_warn_amber
@@ -370,6 +432,12 @@ func _build() -> void:
 	_lbl_warn = _make_label("", 21, Color(1.0, 0.92, 0.44), 5, 2)
 	_lbl_warn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	warn_row.add_child(_lbl_warn)
+
+	_boss_bar = BossHpBar.new()
+	_boss_bar.custom_minimum_size = Vector2(260, 12)
+	_boss_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_boss_bar.visible = false
+	warn_vbox.add_child(_boss_bar)
 
 	# ── 4. 死亡结算弹窗（深海沉船石板 + 顶部死因徽章 + 凹槽记录 + 像素键帽） ────────
 	_end_root = Control.new()
@@ -482,7 +550,7 @@ func _build() -> void:
 	vbox.add_child(_lbl_end_note)
 
 	var hint_row := HBoxContainer.new()
-	hint_row.add_theme_constant_override("separation", 28)
+	hint_row.add_theme_constant_override("separation", 20)
 	hint_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(hint_row)
 
@@ -491,6 +559,18 @@ func _build() -> void:
 	r_pair.add_child(_make_keycap("R", tex_keycap, 15))
 	r_pair.add_child(_make_label("重新开始", 16, Color(0.92, 0.96, 1.0), 3, 1))
 	hint_row.add_child(r_pair)
+
+	var b_pair := HBoxContainer.new()
+	b_pair.add_theme_constant_override("separation", 8)
+	b_pair.mouse_filter = Control.MOUSE_FILTER_STOP
+	b_pair.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b_pair.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			shop_requested.emit()
+	)
+	b_pair.add_child(_make_keycap("B", tex_keycap_cyan, 15))
+	b_pair.add_child(_make_label("鲸堡小店", 16, Color(0.62, 0.96, 1.0), 3, 1))
+	hint_row.add_child(b_pair)
 
 	var esc_pair := HBoxContainer.new()
 	esc_pair.add_theme_constant_override("separation", 8)
@@ -501,12 +581,20 @@ func _build() -> void:
 
 func _on_run_started() -> void:
 	_panel_delay = 0.0
+	_enrage_banner_t = 0.0
+	_drop_toast_t = 0.0
+	if _lbl_drop_toast != null:
+		_lbl_drop_toast.visible = false
 	_end_root.visible = false
 	_fit_end_root()
 
 
 func _on_ready_started() -> void:
 	_panel_delay = 0.0
+	_enrage_banner_t = 0.0
+	_drop_toast_t = 0.0
+	if _lbl_drop_toast != null:
+		_lbl_drop_toast.visible = false
 	_end_root.visible = false
 	_warn_box.visible = false
 	_hud_box.visible = false
@@ -515,6 +603,10 @@ func _on_ready_started() -> void:
 
 func _on_menu_opened() -> void:
 	_panel_delay = 0.0
+	_enrage_banner_t = 0.0
+	_drop_toast_t = 0.0
+	if _lbl_drop_toast != null:
+		_lbl_drop_toast.visible = false
 	_end_root.visible = false
 	_warn_box.visible = false
 	_hud_box.visible = false
@@ -522,8 +614,26 @@ func _on_menu_opened() -> void:
 	_lbl_test.visible = false
 
 
+func _on_boss_enraged() -> void:
+	_enrage_banner_t = 3.2
+
+
+func _on_plant_dropped(plant_id: String, _total: int, _cap: int) -> void:
+	if _lbl_drop_toast == null:
+		return
+	var pname := String(GameState.PLANT_NAMES.get(plant_id, plant_id))
+	_lbl_drop_toast.text = "有物品不小心滑落（%s -1）" % pname
+	_lbl_drop_toast.modulate = Color.WHITE
+	_lbl_drop_toast.visible = true
+	_drop_toast_t = 2.2
+
+
 func _on_run_ended(reason: String, distance: float, score: int) -> void:
 	_warn_box.visible = false
+	_enrage_banner_t = 0.0
+	_drop_toast_t = 0.0
+	if _lbl_drop_toast != null:
+		_lbl_drop_toast.visible = false
 	var title_col := Color(1.0, 0.55, 0.45)
 	var badge_tex := _tex_badge_wall
 	_lbl_title.text = "被追上了"
@@ -531,6 +641,10 @@ func _on_run_ended(reason: String, distance: float, score: int) -> void:
 		"caught_by_chaser":
 			_lbl_title.text = "黑鲸娘咬住了你"
 			title_col = Color(1.0, 0.46, 0.50)
+			badge_tex = _tex_badge_bite
+		"caught_by_boss_proj":
+			_lbl_title.text = "被狂暴黑鲸娘技能击中"
+			title_col = Color(1.0, 0.36, 0.56)
 			badge_tex = _tex_badge_bite
 		"caught_by_wall":
 			_lbl_title.text = "深渊水压吞没了你"
@@ -547,7 +661,7 @@ func _on_run_ended(reason: String, distance: float, score: int) -> void:
 	_lbl_end_dist.text = "%d m" % dist_m
 	_lbl_end_score.text = "%d" % score
 
-	if GameState.mode == GameState.Mode.NORMAL:
+	if GameState.is_savable_mode():
 		var rec := Settings.update_records(dist_m, score)
 		_lbl_end_dist_best.text = "最佳 %d m" % Settings.best_distance_m
 		_lbl_end_score_best.text = "最佳 %d" % Settings.best_score
@@ -555,13 +669,29 @@ func _on_run_ended(reason: String, distance: float, score: int) -> void:
 		_lbl_end_score_best.visible = true
 		_badge_dist_new.visible = bool(rec["new_dist"])
 		_badge_score_new.visible = bool(rec["new_score"])
-		_lbl_end_note.visible = false
+		var p_tot := GameState.total_plants()
+		if p_tot > 0 or GameState.boss_enraged:
+			var rp := GameState.run_plants
+			var s_txt := "鲸尾兜收获 %d/%d（海带 %d · 紫菜 %d · 海藻 %d）" % [
+				GameState.basic_plants_count(), GameState.basic_cap,
+				int(rp["kelp"]), int(rp["nori"]), int(rp["seaweed"]),
+			]
+			if GameState.is_hard_mode() or int(rp["star_algae"]) > 0:
+				s_txt += " · 星光藻 %d/%d" % [int(rp["star_algae"]), GameState.star_cap]
+			if GameState.boss_enraged:
+				s_txt += " · 已触发黑血狂暴"
+			_lbl_end_note.text = s_txt
+			_lbl_end_note.add_theme_color_override("font_color", Color(0.68, 0.94, 0.84))
+			_lbl_end_note.visible = true
+		else:
+			_lbl_end_note.visible = false
 	else:
 		_lbl_end_dist_best.visible = false
 		_lbl_end_score_best.visible = false
 		_badge_dist_new.visible = false
 		_badge_score_new.visible = false
 		_lbl_end_note.text = "练习模式不计入最佳纪录"
+		_lbl_end_note.add_theme_color_override("font_color", Color(0.62, 0.78, 0.90))
 		_lbl_end_note.visible = true
 
 	_fit_end_root()
@@ -572,6 +702,13 @@ func _on_run_ended(reason: String, distance: float, score: int) -> void:
 
 
 func _process(delta: float) -> void:
+	_enrage_banner_t = maxf(0.0, _enrage_banner_t - delta)
+	if _drop_toast_t > 0.0:
+		_drop_toast_t = maxf(0.0, _drop_toast_t - delta)
+		if _lbl_drop_toast != null:
+			_lbl_drop_toast.modulate.a = clampf(_drop_toast_t / 0.6, 0.0, 1.0)
+			if _drop_toast_t <= 0.0:
+				_lbl_drop_toast.visible = false
 	if _badge_space.visible:
 		var sp := 0.5 + 0.5 * sin(_bar_charge._anim_t * 5.0)
 		var lbl := _badge_space.get_child(0) as Label
@@ -612,14 +749,17 @@ func update_live(player: Player, director: ChaseDirector) -> void:
 	elif GameState.is_practice():
 		_lbl_mode.text = "练习模式"
 		_lbl_mode.add_theme_color_override("font_color", Color(0.98, 0.86, 0.52, 0.92))
+	elif GameState.is_hard_mode():
+		_lbl_mode.text = "困难模式"
+		_lbl_mode.add_theme_color_override("font_color", Color(1.0, 0.56, 0.62, 0.94))
 	else:
-		_lbl_mode.text = "正常模式"
-		_lbl_mode.add_theme_color_override("font_color", Color(0.70, 0.85, 0.96, 0.80))
+		_lbl_mode.text = "常规模式"
+		_lbl_mode.add_theme_color_override("font_color", Color(0.70, 0.85, 0.96, 0.88))
 
 	_lbl_dist_val.text = "%.0f m" % (GameState.distance / 64.0)
 	_lbl_score_val.text = "%d" % GameState.score
 
-	var mx := GameConfig.dash_charge_max
+	var mx := GameState.effective_dash_charge_max()
 	_bar_charge.max_charge = mx
 	_bar_charge.charge = clampi(player.dash_charge, 0, mx)
 	_bar_charge.dashing = player.is_dashing()
@@ -627,6 +767,30 @@ func update_live(player: Player, director: ChaseDirector) -> void:
 	var ready := player.dash_charge >= mx and not player.is_dashing()
 	_badge_space.visible = ready
 	_lbl_charge_state.visible = player.is_dashing()
+	if _lbl_cooler != null:
+		var pt := GameState.total_plants()
+		var bt := GameState.basic_plants_count()
+		var rp := GameState.run_plants
+		var star_n := int(rp["star_algae"])
+		var sh_tag := ("   护盾×%d" % player.bubble_shield) if player.bubble_shield > 0 else ""
+		var bf_tag := ""
+		if GameState.active_run_buff_dish != "":
+			var bd := ShopCatalog.get_dish(GameState.active_run_buff_dish)
+			if not bd.is_empty():
+				bf_tag = "   套餐:%s" % String(bd["buff_name"])
+		var show_star := GameState.is_hard_mode() or star_n > 0
+		var star_part := (" · 星光藻 %d/%d" % [star_n, GameState.star_cap]) if show_star else ""
+		if pt > 0:
+			_lbl_cooler.text = "鲸尾兜 %d/%d（海带%d 紫菜%d 海藻%d）%s%s%s" % [
+				bt, GameState.basic_cap,
+				int(rp["kelp"]), int(rp["nori"]), int(rp["seaweed"]),
+				star_part, sh_tag, bf_tag
+			]
+		else:
+			_lbl_cooler.text = "鲸尾兜 0/%d%s%s%s" % [GameState.basic_cap, star_part, sh_tag, bf_tag]
+		_lbl_cooler.add_theme_color_override("font_color",
+			Color(1.0, 0.86, 0.45) if bt >= GameState.basic_cap else Color(0.64, 0.92, 0.80))
+		_lbl_cooler.visible = not GameState.is_sandbox()
 
 	var fps_txt := "—" if player.debug_anim_fps_raw() <= 0.0 \
 		else "%.0f→%.0f" % [player.debug_anim_fps_raw(), player.debug_anim_fps()]
@@ -654,18 +818,65 @@ func update_live(player: Player, director: ChaseDirector) -> void:
 	if sandbox or GameState.is_practice() or GameState.phase != GameState.Phase.RUNNING:
 		_warn_box.visible = false
 		_warn_chase = false
+		if _boss_bar != null:
+			_boss_bar.visible = false
+	elif _enrage_banner_t > 0.0:
+		_warn_chase = true
+		_warn_icon.texture = _tex_warn_chase
+		_lbl_warn.text = "黑鲸娘锁血狂暴！深渊水压已散去！"
+		if _boss_bar != null:
+			_boss_bar.hp = 0
+			_boss_bar.max_hp = GameState.boss_max_hp
+			_boss_bar.enraged = true
+			_boss_bar.visible = true
+		_warn_box.add_theme_stylebox_override("panel", _warn_sb_crimson)
+		_warn_box.visible = true
+	elif director.in_barrage:
+		_warn_chase = true
+		_warn_icon.texture = _tex_warn_chase
+		_lbl_warn.text = "注意小心右侧敌对飞行物"
+		if _boss_bar != null:
+			_boss_bar.hp = 0
+			_boss_bar.max_hp = GameState.boss_max_hp
+			_boss_bar.enraged = true
+			_boss_bar.visible = true
+		_warn_box.add_theme_stylebox_override("panel", _warn_sb_crimson)
+		_warn_box.visible = true
 	elif director.in_chase:
 		_warn_chase = true
 		_warn_icon.texture = _tex_warn_chase
-		_lbl_warn.text = "黑鲸娘正在逼近"
+		if GameState.boss_enraged:
+			_lbl_warn.text = "黑鲸娘 · 狂暴"
+		else:
+			_lbl_warn.text = "黑鲸娘"
+		if _boss_bar != null:
+			_boss_bar.hp = GameState.boss_hp
+			_boss_bar.max_hp = GameState.boss_max_hp
+			_boss_bar.enraged = GameState.boss_enraged
+			_boss_bar.visible = GameState.is_hard_mode()
+		_warn_box.add_theme_stylebox_override("panel", _warn_sb_crimson)
+		_warn_box.visible = true
+	elif GameState.boss_enraged:
+		_warn_chase = false
+		_warn_icon.texture = _tex_warn_chase
+		var cd2 := maxi(1, ceili(director.countdown()))
+		_lbl_warn.text = "锁血狂暴 · %d 秒后下波突袭" % cd2
+		_lbl_warn.add_theme_color_override("font_color", Color(1.0, 0.52, 0.62))
+		if _boss_bar != null:
+			_boss_bar.hp = 0
+			_boss_bar.max_hp = GameState.boss_max_hp
+			_boss_bar.enraged = true
+			_boss_bar.visible = true
 		_warn_box.add_theme_stylebox_override("panel", _warn_sb_crimson)
 		_warn_box.visible = true
 	else:
 		_warn_chase = false
+		if _boss_bar != null:
+			_boss_bar.visible = false
 		var cd := director.countdown()
-		if cd < 1500.0:
+		if cd <= 5.0:
 			_warn_icon.texture = _tex_warn_amber
-			_lbl_warn.text = "前方 %.0f m 进入追逐段" % (cd / 64.0)
+			_lbl_warn.text = "黑鲸娘将在 %d 秒后袭来" % maxi(1, ceili(cd))
 			_lbl_warn.add_theme_color_override("font_color", Color(1.0, 0.92, 0.44))
 			_warn_box.add_theme_stylebox_override("panel", _warn_sb_amber)
 			_warn_box.visible = true

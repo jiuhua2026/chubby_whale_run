@@ -33,6 +33,8 @@ var active := false:
 
 var _player: Player
 var _parked := false   ## 高潮追击期间把墙「停车」，避免两种压力叠加导致必死
+var _retreating := false
+var _retreat_t := 0.0
 var _wave_root: Node2D
 var _fade_tex: GradientTexture2D
 var _motes: Array[SurgeMote] = []
@@ -95,6 +97,9 @@ func setup(player: Player) -> void:
 func reset(player_x: float) -> void:
 	x = player_x - GameConfig.wall_start_gap
 	_parked = false
+	_retreating = false
+	_retreat_t = 0.0
+	modulate = Color.WHITE
 	_motes.clear()
 	_spawn_acc = 0.0
 	for _i in 24:
@@ -110,6 +115,35 @@ func set_parked(p: bool) -> void:
 	_parked = p
 
 
+## 黑鲸娘进入红转黑锁血二阶段：把水压浪墙拉进屏幕左缘可视区并向左侧爆散退场，让玩家一眼看见水压散去。
+func retreat_for_boss() -> void:
+	if _retreating:
+		return
+	active = true
+	visible = true
+	_retreating = true
+	_retreat_t = 0.0
+	_parked = false
+	var vp := get_viewport()
+	var vw := vp.get_visible_rect().size.x if vp != null else 1280.0
+	if _player != null:
+		var left_vis := _player.global_position.x - vw * GameConfig.camera_player_screen_ratio
+		x = maxf(x, left_vis + 88.0)
+	var host := get_parent() if get_parent() != null else self
+	var base_y := _player.global_position.y if _player != null else 0.0
+	for oy in [-260.0, -130.0, 0.0, 90.0]:
+		var fx := PixelFxPlayer.new()
+		fx.z_index = 41
+		fx.scale = Vector2(1.70, 1.70)
+		fx.modulate = Color(0.75, 0.94, 1.0, 0.94)
+		fx.position = Vector2(x + 16.0, base_y + oy)
+		host.add_child(fx)
+		if not fx.play("chase/wall_retreat", true, 1.35, 0.0, true):
+			fx.queue_free()
+	_sync_wave()
+	queue_redraw()
+
+
 func gap() -> float:
 	if _player == null:
 		return 0.0
@@ -118,6 +152,19 @@ func gap() -> float:
 
 func update(delta: float) -> void:
 	if not active or _player == null or not GameState.is_running():
+		return
+
+	if _retreating:
+		_retreat_t += delta
+		x += (_player.speed - 460.0) * delta
+		modulate.a = maxf(0.0, 1.0 - _retreat_t / 0.85)
+		_sync_wave()
+		queue_redraw()
+		if _retreat_t >= 0.85:
+			active = false
+			visible = false
+			_retreating = false
+			modulate = Color.WHITE
 		return
 
 	if _parked:

@@ -23,18 +23,25 @@ const SFX_PATHS := {
 	"intro_buildup": "res://audio/intro_buildup.wav",
 	"intro_whoosh": "res://audio/intro_whoosh.wav",
 	"intro_impact": "res://audio/intro_impact.wav",
+	"shop_cook": "res://audio/sfx/shop_cook.wav",
+	"shop_crisp": "res://audio/sfx/shop_crisp.wav",
+	"shop_serve": "res://audio/sfx/shop_serve.wav",
+	"shop_coin": "res://audio/sfx/shop_coin.wav",
+	"shop_zone_cue": "res://audio/sfx/shop_zone_cue.wav",
 }
 
 const BGM_PATHS := {
 	"menu": "res://audio/bgm/bgm_menu.mp3",
 	"run": "res://audio/bgm/bgm_run.mp3",
 	"chase": "res://audio/bgm/bgm_chase.ogg",
+	"shop": "res://audio/bgm/bgm_shop.wav",
 }
 
 const BGM_BASE_DB := {
 	"menu": -11.5,
 	"run": -10.5,
 	"chase": -10.5,
+	"shop": -11.5,
 }
 
 const BUS_BGM := "BGM"
@@ -203,6 +210,11 @@ func _preload_bgm() -> void:
 					(stream as AudioStreamMP3).loop = true
 				elif stream is AudioStreamOggVorbis:
 					(stream as AudioStreamOggVorbis).loop = true
+				elif stream is AudioStreamWAV:
+					var wav := stream as AudioStreamWAV
+					wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+					wav.loop_begin = 0
+					wav.loop_end = int(round(wav.get_length() * float(wav.mix_rate)))
 				_bgm_cache[key] = stream
 		else:
 			push_warning("[AudioManager] 未找到音乐资源: %s" % path)

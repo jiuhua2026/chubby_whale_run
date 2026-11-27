@@ -491,15 +491,109 @@ def gen_intro_impact():
     write_wav("intro_impact.wav", out, 0.94)
 
 
+def gen_shop_cook():
+    """油锅冒泡下锅 / 料理开始滋滋水声（0.32s）"""
+    dur = 0.32
+    n = int(SR * dur)
+    out = [0.0] * n
+    bp = Biquad("bandpass", 1800.0, 1.4, SR)
+    lp = Biquad("lowpass", 4200.0, 0.7, SR)
+    for i in range(n):
+        t = i / SR
+        env = min(1.0, t / 0.015) * math.exp(-t * 8.0)
+        pop = 0.0
+        for p_t in (0.04, 0.11, 0.19, 0.25):
+            if abs(t - p_t) < 0.025:
+                pop += math.sin(2 * math.pi * (420.0 + p_t * 1400.0) * (t - p_t)) * math.exp(-abs(t - p_t) * 120.0)
+        sizzle = lp.process(bp.process(random.uniform(-1.0, 1.0))) * 0.72
+        out[i] = (sizzle + pop * 0.45) * env
+    write_wav(os.path.join("sfx", "shop_cook.wav"), out, 0.85)
+
+
+def gen_shop_crisp():
+    """★ 金脆完美区拍中清脆铃声（0.42s）"""
+    dur = 0.42
+    n = int(SR * dur)
+    out = [0.0] * n
+    for i in range(n):
+        t = i / SR
+        atk = min(1.0, t / 0.005)
+        tone1 = math.sin(2 * math.pi * 880.0 * t) * math.exp(-t * 9.0) * 0.45
+        tone2 = math.sin(2 * math.pi * 1318.5 * max(0.0, t - 0.04)) * (1.0 if t >= 0.04 else 0.0) * math.exp(-max(0.0, t - 0.04) * 8.0) * 0.50
+        tone3 = math.sin(2 * math.pi * 1760.0 * max(0.0, t - 0.08)) * (1.0 if t >= 0.08 else 0.0) * math.exp(-max(0.0, t - 0.08) * 7.5) * 0.45
+        out[i] = (tone1 + tone2 + tone3) * atk
+    write_wav(os.path.join("sfx", "shop_crisp.wav"), out, 0.90)
+
+
+def gen_shop_serve():
+    """出餐摇铃叮声（0.36s）"""
+    dur = 0.36
+    n = int(SR * dur)
+    out = [0.0] * n
+    for i in range(n):
+        t = i / SR
+        atk = min(1.0, t / 0.004)
+        s = (
+            math.sin(2 * math.pi * 1046.5 * t) * 0.55
+            + math.sin(2 * math.pi * 2093.0 * t) * 0.25
+            + math.sin(2 * math.pi * 3136.0 * t) * 0.12
+        ) * atk * math.exp(-t * 9.5)
+        out[i] = s
+    write_wav(os.path.join("sfx", "shop_serve.wav"), out, 0.88)
+
+
+def gen_shop_coin():
+    """贝壳币叮当入账声（0.34s）"""
+    dur = 0.34
+    n = int(SR * dur)
+    out = [0.0] * n
+    for i in range(n):
+        t = i / SR
+        atk = min(1.0, t / 0.004)
+        c1 = math.sin(2 * math.pi * 987.77 * t) * math.exp(-t * 14.0) * 0.48
+        dt2 = max(0.0, t - 0.065)
+        c2 = (math.sin(2 * math.pi * 1479.98 * dt2) * 0.55 + math.sin(2 * math.pi * 2959.96 * dt2) * 0.22) * (1.0 if t >= 0.065 else 0.0) * math.exp(-dt2 * 10.5)
+        out[i] = (c1 + c2) * atk
+    write_wav(os.path.join("sfx", "shop_coin.wav"), out, 0.90)
+
+
+def gen_shop_zone_cue():
+    """进入 ★ 金脆完美区的轻脆小铃铛提示音（0.20s）"""
+    dur = 0.20
+    n = int(SR * dur)
+    out = [0.0] * n
+    for i in range(n):
+        t = i / SR
+        atk = min(1.0, t / 0.003)
+        n1 = math.sin(2 * math.pi * 1174.66 * t) * math.exp(-t * 20.0) * 0.42
+        dt2 = max(0.0, t - 0.05)
+        n2 = math.sin(2 * math.pi * 1567.98 * dt2) * (1.0 if t >= 0.05 else 0.0) * math.exp(-dt2 * 16.0) * 0.48
+        out[i] = (n1 + n2) * atk
+    write_wav(os.path.join("sfx", "shop_zone_cue.wav"), out, 0.84)
+
+
 def main():
     intro_only = "--intro-only" in sys.argv
+    shop_only = "--shop-only" in sys.argv
     print("=" * 60)
-    if intro_only:
+    if shop_only:
+        print("正在生成深海鲸堡小店定制音效...")
+    elif intro_only:
         print("正在生成片头开场定制音效...")
     else:
         print("正在生成深海鲸鱼娘跑酷全套拟真游戏音效...")
     print("=" * 60)
     random.seed(20261018)
+
+    if shop_only:
+        random.seed(20261127)
+        gen_shop_cook()
+        gen_shop_crisp()
+        gen_shop_serve()
+        gen_shop_coin()
+        gen_shop_zone_cue()
+        print("全部 5 款小店音效已生成至 audio/sfx/！")
+        return
 
     if not intro_only:
         gen_jump()

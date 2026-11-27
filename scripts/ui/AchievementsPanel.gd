@@ -1,12 +1,12 @@
 extends Control
 class_name AchievementsPanel
 ## 设置 →「深海成就」面板（参考《潜水员戴夫》海洋成就档案排版）：
-##   顶部：总成就完成度进度条 + 下一皮肤里程碑提示 + 分类筛选页签（全部 / 历程 / 技巧 / 追击 / 彩蛋）
+##   顶部：总成就完成度进度条 + 下一皮肤里程碑提示 + 分类筛选页签（全部 / 历程 / 技巧 / 追击 / Boss / 小店 / 彩蛋）
 ##   主体：双列成就徽章卡片网格（左：分类主题徽章；中：标题/条件/内置进度条；右：达成状态戳）
 
 signal closed()
 
-const CATEGORIES := ["全部", "历程", "技巧", "追击", "彩蛋"]
+const CATEGORIES := ["全部", "历程", "技巧", "追击", "Boss", "小店", "彩蛋"]
 
 var _cat_idx := 0
 var _summary_lbl: Label
@@ -65,6 +65,19 @@ class BadgeIcon extends Control:
 				draw_circle(c, 8.0, acc)
 				draw_arc(c, 11.0, 0.0, TAU, 16, fg, 1.8)
 				draw_circle(c + Vector2(-2.5, -2.5), 2.2, Color(1.0, 0.98, 0.9, 0.9) if unlocked else bg)
+			"Boss":
+				# 赤黑狂暴冠角徽章
+				var crown := PackedVector2Array([
+					c + Vector2(-11, 7), c + Vector2(-10, -7), c + Vector2(-4, 0),
+					c + Vector2(0, -11), c + Vector2(4, 0), c + Vector2(10, -7), c + Vector2(11, 7),
+				])
+				draw_colored_polygon(crown, fg)
+				draw_circle(c + Vector2(0, 2), 3.0, Color(0.95, 0.25, 0.42, 1.0) if unlocked else bg)
+			"小店":
+				# 鲸堡金脆汉堡徽章
+				draw_arc(c + Vector2(0, 1), 10.0, PI, TAU, 16, fg, 5.5)
+				draw_line(c + Vector2(-11, 2), c + Vector2(11, 2), acc, 3.0)
+				draw_line(c + Vector2(-10, 6.5), c + Vector2(10, 6.5), fg, 3.2)
 			_:
 				# 历程：深海罗盘菱星
 				var star := PackedVector2Array([
@@ -139,12 +152,12 @@ func _ready() -> void:
 	# 分类筛选页签（参考戴夫图鉴页签）
 	var tab_hb := HBoxContainer.new()
 	tab_hb.alignment = BoxContainer.ALIGNMENT_CENTER
-	tab_hb.add_theme_constant_override("separation", 10)
+	tab_hb.add_theme_constant_override("separation", 8)
 	root_vb.add_child(tab_hb)
 
 	for ci in CATEGORIES.size():
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(108, 30)
+		btn.custom_minimum_size = Vector2(102, 30)
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		btn.focus_mode = Control.FOCUS_NONE
 		btn.add_theme_font_size_override("font_size", 13)

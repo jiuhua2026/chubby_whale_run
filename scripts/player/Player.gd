@@ -12,6 +12,7 @@ class_name Player
 ## 之后按较慢的恢复加速度爬回目标速度——「被追上」的压力就来自这段恢复期。
 
 signal hit_taken(kind: String)
+signal bubble_shield_broken()
 
 const LAYER_PLAYER := 2
 const LAYER_WORLD := 1
@@ -73,6 +74,9 @@ var dash_charge := 0
 var _dash_t := 0.0
 ## 累计冲刺次数（自检统计用）
 var dash_count := 0
+## 水泡护盾（免除 1 次碰撞减速硬直，不致命、不清冲刺势能）
+var bubble_shield := 0
+var _shield_anim_t := 0.0
 ## 冲刺特效（残影 + 粒子）。由 Main 注入。
 ## ⚠ 它是**世界层**节点，绝不能挂成 Player 的子节点 —— 玩家在世界里真前进，
 ## 挂在下面的话特效会跟着走，拖不出尾巴。缺省 null 时无特效，功能不受影响。
@@ -127,10 +131,13 @@ func reset(p_pos: Vector2) -> void:
 	dash_charge = 0
 	_dash_t = 0.0
 	dash_count = 0
+	bubble_shield = 1 if (GameState.active_run_buff == "shield" or GameState.active_run_buff == "supreme_surge") else 0
+	_shield_anim_t = 0.0
 	if dash_fx != null:
 		dash_fx.clear_all()      # 残影是 Tween 驱动的，重开一局必须显式回收
 	_sprite.modulate = Color.WHITE
 	_set_stand_shape()
+	queue_redraw()
 
 
 func _set_stand_shape() -> void:
@@ -208,6 +215,9 @@ func _timers(delta: float) -> void:
 	_land_t = maxf(0.0, _land_t - delta)
 	_stun = maxf(0.0, _stun - delta)
 	_invuln = maxf(0.0, _invuln - delta)
+	if bubble_shield > 0:
+		_shield_anim_t += delta
+		queue_redraw()
 	var was_dashing := _dash_t > 0.0
 	_dash_t = maxf(0.0, _dash_t - delta)
 	# 冲刺刚结束的那一帧：通知特效停掉发射。
@@ -234,7 +244,7 @@ func _read_input() -> void:
 	# 借用的时候要纠结"满格按跳到底算跳还是算冲"，而且两个效果会同时发生；
 	# 拆开之后"上 = 跳、下 = 滑、空格 = 冲刺"三个键各管一件事，不用猜。
 	if Input.is_action_just_pressed("dash") \
-			and dash_charge >= GameConfig.dash_charge_max and not is_dashing():
+			and dash_charge >= GameState.effective_dash_charge_max() and not is_dashing():
 		_start_dash()
 
 	if Input.is_action_just_pressed("jump"):
@@ -296,7 +306,9 @@ func _end_slide() -> void:
 
 
 func _apply_horizontal(delta: float) -> void:
-	var mult := GameConfig.slide_speed_mult if is_sliding() else 1.0
+	var stream_buff := GameState.active_run_buff == "streamline"
+	var slide_mult := GameConfig.slide_speed_mult + (0.08 if stream_buff else 0.0)
+	var mult := slide_mult if is_sliding() else 1.0
 	# 冲刺叠乘。它只改**目标速度**，实际速度仍受加速度限制 ——
 	# 所以冲刺是"推着速度往上走"而不是瞬间位移，结束也会平滑降回来。
 	if _dash_t > 0.0:
@@ -308,7 +320,8 @@ func _apply_horizontal(delta: float) -> void:
 		velocity.x = speed
 		return
 
-	var accel := GameConfig.accel_recover if _recovering else GameConfig.accel_normal
+	var rec_accel := GameConfig.accel_recover * (1.28 if stream_buff else 1.0)
+	var accel := rec_accel if _recovering else GameConfig.accel_normal
 	speed = move_toward(speed, target, accel * delta)
 	if _recovering and speed >= Difficulty.player_target_speed() - 1.0:
 		_recovering = false
@@ -473,6 +486,17 @@ func take_hit(kind: String) -> void:
 		# 冲刺期间硬穿障碍：不减速、不僵直、势能也不清。
 		# 这是冲刺的价值所在 —— 攒满几格势能这个代价，换的就是"能硬冲一段"。
 		return
+	if bubble_shield > 0:
+		# 水泡护盾：免除本次碰障碍减速硬直，不丢失势能
+		bubble_shield -= 1
+		_invuln = GameConfig.hit_invuln
+		_hit_serial += 1
+		if dash_fx != null:
+			dash_fx.spawn_shield_break(global_position + Vector2(8.0, -48.0))
+		AudioManager.play_sfx("near_miss", 2.0, 0.85)
+		bubble_shield_broken.emit()
+		queue_redraw()
+		return
 	speed *= GameConfig.hit_speed_mult
 	_stun = GameConfig.hit_stun
 	_invuln = GameConfig.hit_invuln
@@ -489,6 +513,9 @@ func take_hit(kind: String) -> void:
 	AudioManager.play_sfx("hit", 0.0)
 	if dash_fx != null:
 		dash_fx.spawn_hit(global_position + Vector2(16.0, -14.0))
+	var dropped := GameState.drop_random_plant()
+	if dropped != "" and dash_fx != null:
+		dash_fx.spawn_plant_drop(global_position + Vector2(-18.0, -34.0), PlantPickup.PLANT_TEX.get(dropped))
 	hit_taken.emit(kind)
 	GameState.player_hit.emit(kind)
 
@@ -516,7 +543,7 @@ func award_near_miss() -> bool:
 		# 冲刺状态是"无视障碍"，穿过去不算擦身而过 ——
 		# 否则一路冲一路白送势能，等于自己给自己续杯
 		return false
-	if dash_charge >= GameConfig.dash_charge_max:
+	if dash_charge >= GameState.effective_dash_charge_max():
 		return false          # 已经满了，多的擦身而过不叠加
 	# **一次擦身只记一格**：同组/相邻障碍的门是挨着的，不加这条的话
 	# 一组长障碍（2~3 列悬顶）会连着给两三次。
@@ -525,7 +552,7 @@ func award_near_miss() -> bool:
 	_nm_award_x = global_position.x
 	dash_charge += 1
 	GameState.near_miss_awarded.emit()
-	if dash_charge >= GameConfig.dash_charge_max:
+	if dash_charge >= GameState.effective_dash_charge_max():
 		AudioManager.play_sfx("dash_ready", -2.0)
 	else:
 		AudioManager.play_sfx("near_miss", 0.0)
@@ -535,7 +562,7 @@ func award_near_miss() -> bool:
 
 func _start_dash() -> void:
 	dash_charge = 0
-	_dash_t = GameConfig.dash_time
+	_dash_t = GameConfig.dash_time * (1.35 if GameState.active_run_buff == "supreme_surge" else 1.0)
 	dash_count += 1
 	GameState.dash_started.emit()
 	if dash_fx != null:
@@ -559,6 +586,25 @@ func _on_skin_changed(skin_id: String) -> void:
 	var cur := _anim.current_action()
 	if cur != "":
 		_anim.play(cur, 0.0, 12.0, 0)
+
+
+func _draw() -> void:
+	if bubble_shield <= 0 or not alive:
+		return
+	var pulse := 0.5 + 0.5 * sin(_shield_anim_t * 4.5)
+	var sliding := is_sliding()
+	var center := Vector2(-6.0, -32.0) if sliding else Vector2(-4.0, -56.0)
+	var r := 54.0 if sliding else 70.0
+	var sx := 1.22 if sliding else 1.0
+
+	draw_set_transform(center, 0.0, Vector2(sx, 1.0))
+	draw_circle(Vector2.ZERO, r, Color(0.28, 0.80, 1.0, 0.09 + 0.04 * pulse))
+	draw_arc(Vector2.ZERO, r + 2.0, 0.0, TAU, 44, Color(0.38, 0.88, 1.0, 0.22 + 0.08 * pulse), 5.5)
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 44, Color(0.66, 0.96, 1.0, 0.64 + 0.20 * pulse), 2.5)
+	var glint_rot := sin(_shield_anim_t * 2.1) * 0.06
+	draw_arc(Vector2(-3.0, -3.0), r * 0.78, PI * 1.10 + glint_rot, PI * 1.46 + glint_rot, 12, Color(0.94, 1.0, 1.0, 0.72), 2.4)
+	draw_circle(Vector2(r * 0.52, r * 0.52), 3.4, Color(0.90, 0.99, 1.0, 0.55 + 0.15 * pulse))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func kill(reason: String) -> void:

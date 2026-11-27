@@ -151,6 +151,52 @@ func spawn_hit(world_pos: Vector2) -> void:
 	fx.set_flipped_h(true)
 
 
+## 水泡护盾抵挡 1 次碰障减速时碎裂特效
+func spawn_shield_break(world_pos: Vector2) -> void:
+	var fx := PixelFxPlayer.new()
+	fx.z_index = 3
+	fx.scale = Vector2(1.5, 1.5)
+	fx.modulate = Color(0.92, 0.98, 1.0, 0.95)
+	fx.position = world_pos
+	add_child(fx)
+	if not fx.play("action/bubble_shield_break", true, 1.35, 0.0, true):
+		fx.queue_free()
+
+
+## 冲刺对黑鲸娘造成水压冲击波命中特效
+func spawn_dash_shockwave(world_pos: Vector2) -> void:
+	var fx := PixelFxPlayer.new()
+	fx.z_index = 46
+	fx.scale = Vector2(1.65, 1.65)
+	fx.modulate = Color(0.88, 0.98, 1.0, 0.98)
+	fx.position = world_pos
+	add_child(fx)
+	if not fx.play("action/dash_shockwave", true, 1.4, 0.0, true):
+		fx.queue_free()
+
+
+## 撞障碍物滑落采集物时：从鲸尾兜向后下方抛落 1 株植物剪影
+func spawn_plant_drop(world_pos: Vector2, tex: Texture2D) -> void:
+	if tex == null:
+		return
+	var sp := Sprite2D.new()
+	sp.texture = tex
+	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sp.position = world_pos
+	sp.scale = Vector2(0.86, 0.86)
+	sp.z_index = 4
+	sp.modulate = Color(1.0, 0.88, 0.78, 0.96)
+	add_child(sp)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(sp, "position:x", world_pos.x - 140.0, 0.56).set_ease(Tween.EASE_OUT)
+	tw.tween_property(sp, "position:y", world_pos.y - 36.0, 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(sp, "position:y", world_pos.y + 64.0, 0.38).set_delay(0.18).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(sp, "rotation", -1.4, 0.56)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.30).set_delay(0.26)
+	tw.chain().tween_callback(sp.queue_free)
+
+
 ## 重开一局时清干净（残影是 Tween 驱动的，必须显式回收）
 func clear_all() -> void:
 	_dashing = false

@@ -524,3 +524,39 @@ func jump_air_time() -> float:
 func jump_distance(speed: float = -1.0) -> float:
 	var s := speed if speed > 0.0 else run_speed_start
 	return s * jump_air_time()
+
+
+# ---------------------------------------------------------------- v2.0 Phase 1 · 鲸尾兜采植与黑鲸娘二阶段 Boss
+## 初始「鲸尾兜」容量：9 格常规海生植物 + 1 格星光藻专属格（共 10 格，互不顶替）
+const cooler_basic_base_capacity := 9
+const cooler_star_base_capacity := 1
+const cooler_base_capacity := 10
+## 撞击障碍未开冲刺/无水泡护盾时，从鲸尾兜意外滑落 1 株采集物的概率（30%）
+const hit_plant_drop_chance := 0.30
+
+## 黑鲸娘一阶段红色血条上限（保持 3 格，每次冲刺命中削减 1 格）
+const boss_max_hp := 3
+## 追击期间释放 Space 冲刺对黑鲸娘的有效击退范围（px，须黑鲸娘近身才可弹开）与击退距离
+const boss_dash_hit_range := 240.0
+const boss_dash_knockback := 160.0
+## 弹开后先用新怒态迅速回逼追击一截，随后慢慢消散
+const boss_post_hit_rush_sec := 1.80
+const boss_post_hit_close_ratio := 1.42
+## 追击与波次按「时间（秒）」调度，防止掉入实体凹槽顶墙停滞时卡停 Boss 流程
+const chase_first_delay_sec := 15.0
+const chase_interval_sec := 18.0
+const chase_segment_sec := 5.0
+## 二阶段（红转黑锁血狂暴）后，追击段与召弹段的时间与压迫参数
+const boss_p2_wave_interval_sec := 6.5
+const boss_p2_chase_sec := 5.2
+const boss_p2_fade_in_speed := 1.35
+const boss_p2_close_ratio := 1.28
+const boss_p2_min_gap := 76.0
+
+## 二阶段右→左技能飞行物：右侧预警时长（秒）、世界坐标系向左飞行速率、星光藻纯随机掉率(12%无保底)
+const boss_proj_warn_time := 0.95
+const boss_proj_world_speed := 460.0
+const boss_proj_star_drop_chance := 0.12
+## 二阶段每次召弹试炼波次发射数与间隔（秒）
+const boss_p2_barrage_count := 3
+const boss_proj_interval := 2.05

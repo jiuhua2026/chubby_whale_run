@@ -34,6 +34,7 @@ var player: Player
 var dash_fx: DashFx
 var wall: DeathWall
 var chaser: Chaser
+var boss_proj: BossProjectile
 var director: ChaseDirector
 var cam: Camera2D
 var hud: HUD
@@ -97,6 +98,13 @@ var _pause_demo := false
 var _restart_demo := false
 ## `-- --achievements-demo`：验证全部 6 张纪念画片、8 个成就触发、顶部 Toast 弹出、练习模式隔离与图鉴面板交互。
 var _achievements_demo := false
+var _phase1_demo := false
+var _phase2_demo := false
+var _shop_shot := false
+var _pv_scene := ""
+var _pv_dodge := false
+var _pv_dodge_timer := 0.0
+var _pv_parry_next := false
 ## 抓多少帧。要覆盖「冲刺全程 + 尾巴粒子飘完」：
 ## 冲刺 1.0s（60 帧）+ 尾迹最长寿命 0.46s ≈ 88 帧，取 80 够看完整段。
 ## 悬顶模式用得长得多：造型按「世界列号 mod 4」轮换（`TerrainChunk._variant_of`
@@ -203,7 +211,13 @@ func _ready() -> void:
 		_selftest = true
 	_restart_demo = user_args.has("--restart-demo")
 	_achievements_demo = user_args.has("--achievements-demo")
-	if _selftest or _shot or _pause_demo or _restart_demo or _achievements_demo or _intro_shot_t >= 0.0:
+	_phase1_demo = user_args.has("--phase1-demo")
+	_phase2_demo = user_args.has("--phase2-demo")
+	_shop_shot = user_args.has("--shop-shot")
+	if _shop_shot:
+		_shot = true
+		_shot_from_frame = 8
+	if _selftest or _shot or _pause_demo or _restart_demo or _achievements_demo or _phase1_demo or _phase2_demo or _intro_shot_t >= 0.0:
 		Settings.record_save_enabled = false
 	# --over-variant=N / --low-variant=N：强制某一组障碍只用第 N 款造型
 	# （逐款核对贴图用，见 TerrainChunk）
@@ -214,6 +228,11 @@ func _ready() -> void:
 			TerrainChunk.debug_low_variant = int(a.substr("--low-variant=".length()))
 		elif a.begins_with("--intro-shot="):
 			_intro_shot_t = float(a.substr("--intro-shot=".length()))
+		elif a.begins_with("--pv-scene="):
+			_pv_scene = a.substr("--pv-scene=".length())
+	if _pv_scene != "":
+		Settings.record_save_enabled = false
+		Settings.intro_seen = true
 	_intro_shot_replay = user_args.has("--intro-shot-replay")
 	_ready_shot = user_args.has("--ready-shot")
 	if _ready_shot:
@@ -229,9 +248,11 @@ func _ready() -> void:
 	GameState.run_ended.connect(_on_run_ended)
 	GameState.chase_started.connect(_on_chase_started)
 	GameState.chase_ended.connect(_on_chase_ended)
+	GameState.boss_enraged_started.connect(_on_boss_enraged)
 	GameState.menu_opened.connect(_on_menu_opened)
 	menu.mode_chosen.connect(_on_mode_chosen)
 	menu.replay_intro_requested.connect(_on_replay_intro_requested)
+	hud.shop_requested.connect(_on_end_shop_requested)
 	intro.reveal_ready.connect(_on_intro_reveal_ready)
 	intro.finished.connect(_on_intro_finished)
 
@@ -264,15 +285,22 @@ func _ready() -> void:
 			intro.seek_for_capture(_intro_shot_t, _intro_shot_replay)
 			if _intro_shot_t >= OpeningIntro.T_HANDOFF:
 				menu.reveal_ui(0.0, clampf((_intro_shot_t - OpeningIntro.T_HANDOFF) / 0.45, 0.0, 1.0))
-		elif not _shot and not _pause_demo and not _restart_demo and not _achievements_demo \
+		elif not _shot and not _pause_demo and not _restart_demo and not _achievements_demo and not _phase1_demo and not _phase2_demo \
+				and _pv_scene == "" \
 				and not user_args.has("--settings") \
 				and not user_args.has("--wardrobe") \
+				and not user_args.has("--shop") \
 				and not user_args.has("--achievements") and not Settings.intro_seen:
 			menu.set_intro_blocking(true)
 			intro.play(false)
 		else:
 			AudioManager.set_bgm_muffled(false, 0.0, 20500.0, 0.0)
 			AudioManager.play_bgm("menu", 0.6)
+			if _shop_shot:
+				Callable(self, "_prepare_shop_shot").call_deferred()
+
+	if _pv_scene != "":
+		Callable(self, "_run_pv_scene").call_deferred()
 
 	if _pause_demo:
 		Callable(self, "_run_pause_demo").call_deferred()
@@ -280,10 +308,14 @@ func _ready() -> void:
 		Callable(self, "_run_restart_demo").call_deferred()
 	if _achievements_demo:
 		Callable(self, "_run_achievements_demo").call_deferred()
+	if _phase1_demo:
+		Callable(self, "_run_phase1_demo").call_deferred()
+	if _phase2_demo:
+		Callable(self, "_run_phase2_demo").call_deferred()
 
 
 func _on_mode_chosen(p_mode: int) -> void:
-	if p_mode == GameState.Mode.NORMAL and not _selftest and (not _shot or _ready_shot):
+	if (p_mode == GameState.Mode.NORMAL or p_mode == GameState.Mode.HARD) and not _selftest and (not _shot or _ready_shot):
 		GameState.begin_ready(p_mode)
 	else:
 		GameState.start_run(p_mode)
@@ -307,10 +339,20 @@ func _on_intro_finished() -> void:
 	menu.set_intro_blocking(false)
 
 
+func _clear_dynamic_actors() -> void:
+	if boss_proj != null:
+		boss_proj.reset()
+	if actors != null:
+		for c in actors.get_children():
+			if c is PlantPickup:
+				c.queue_free()
+
+
 func _on_menu_opened() -> void:
 	_ready_t = -1.0
 	_came_from_ready = false
 	chaser.snap_hidden()
+	_clear_dynamic_actors()
 	AudioManager.stop_sfx()
 	AudioManager.set_bgm_muffled(false, 0.0, 20500.0, 0.35)
 	if intro == null or not intro.is_playing():
@@ -334,6 +376,11 @@ func _on_run_ended(_reason: String, _distance: float, _score: int) -> void:
 func _on_chase_started(_index: int) -> void:
 	AudioManager.play_sfx("chase_warning", 1.0)
 	AudioManager.play_bgm("chase", 0.45)
+
+
+func _on_boss_enraged() -> void:
+	_shake_kick = 1.35
+	AudioManager.play_bgm("chase", 0.25)
 
 
 func _on_chase_ended(_index: int) -> void:
@@ -381,6 +428,10 @@ func _build() -> void:
 	chaser = Chaser.new()
 	chaser.name = "Chaser"
 	actors.add_child(chaser)
+
+	boss_proj = BossProjectile.new()
+	boss_proj.name = "BossProjectile"
+	actors.add_child(boss_proj)
 
 	director = ChaseDirector.new()
 	director.name = "ChaseDirector"
@@ -436,9 +487,10 @@ func _build() -> void:
 
 	wall.setup(player)
 	chaser.setup(player)
+	boss_proj.setup(player, terrain, actors)
 	# 撞到障碍 ⇒ 屏震一下（"失误有代价"的可感知形式）
 	player.hit_taken.connect(_on_player_hit_shake)
-	director.setup(wall, chaser, terrain, player)
+	director.setup(wall, chaser, terrain, player, boss_proj)
 
 	autopilot = AutoPilot.new()
 	autopilot.setup(player, terrain)
@@ -490,6 +542,7 @@ func _on_ready_started() -> void:
 	player.speed = 320.0
 	wall.reset(START_POS.x)
 	wall.active = false
+	_clear_dynamic_actors()
 	director.reset()
 	autopilot.reset()
 	AudioManager.stop_sfx()
@@ -533,6 +586,7 @@ func _on_run_started() -> void:
 	# ⚠ 这里必须是**硬隐藏**（`snap_hidden`）而不是 `end()`：`end()` 现在是"淡出"，
 	# 新一局开始的瞬间要干净，不能看到上一局残留的淡出尾巴。
 	chaser.snap_hidden()
+	_clear_dynamic_actors()
 	director.reset()
 	autopilot.reset()
 	AudioManager.stop_sfx()
@@ -636,8 +690,10 @@ func _physics_process(delta: float) -> void:
 	_prev_x = player.global_position.x
 	GameState.add_distance(maxf(dx, 0.0))
 
-	if _selftest:
+	if _selftest or _pv_scene != "":
 		autopilot.tick(delta)
+	if _pv_dodge:
+		_pv_tick_proj_dodge(delta)
 
 	terrain.update_for(player.global_position.x)
 
@@ -652,6 +708,7 @@ func _physics_process(delta: float) -> void:
 		if not GameState.is_practice():
 			chaser.update(delta)
 			if not _solvable_only:
+				boss_proj.update(delta)
 				director.update(delta)
 
 	# 暗角强度：目标 = 她的贴近程度，按帧平滑逼近（追击结束/开始都不会硬切）
@@ -733,7 +790,7 @@ func _update_shot() -> void:
 		else:
 			trig = player.is_dashing() and GameState.is_running()
 		if trig:
-			if _intro_shot_t >= 0.0:
+			if _intro_shot_t >= 0.0 or _shop_shot:
 				_shot_left = 1
 			elif _ready_shot:
 				_shot_left = 90
@@ -1165,8 +1222,8 @@ func _run_achievements_demo() -> void:
 			or player._anim.frame_count("jump") != 10 \
 			or player._anim.frame_count("slide") != 10:
 		fail.call("默认深海女仆动作帧加载异常")
-	if SkinCatalog.ACHIEVEMENTS.size() != 20:
-		fail.call("成就总数应为 20，实际=%d" % SkinCatalog.ACHIEVEMENTS.size())
+	if SkinCatalog.ACHIEVEMENTS.size() != 26:
+		fail.call("成就总数应为 26，实际=%d" % SkinCatalog.ACHIEVEMENTS.size())
 
 	# 1b. 成就数不足 3 时不得装备 cozy_knit
 	if Progress.set_equipped_skin("cozy_knit"):
@@ -1246,14 +1303,19 @@ func _run_achievements_demo() -> void:
 	if not Progress.is_achievement_unlocked("ach_easter_caught"):
 		fail.call("caught_by_chaser 未解锁彩蛋 美味大肥鱼")
 
-	# 4. 补足累计 15000m 与累计 30 局（含 1 次边界 + 10+ 堕崖）⇒ 全部 20 个成就均应解锁
+	# 4. 补足累计 15000m 与累计 30 局 + v2.0 Boss/星光藻/弹幕与小店成就 ⇒ 全部 26 个成就均应解锁
 	for r in 29:
-		GameState.start_run(GameState.Mode.NORMAL)
+		GameState.start_run(GameState.Mode.HARD if r == 0 else GameState.Mode.NORMAL)
 		if r == 0:
 			GameState.add_distance(13000.0 * 64.0) # 累计达 15100m -> 解锁 全勤打工鱼(5000m) & 深海马拉松(15000m)
+			GameState.boss_enraged_started.emit()
+			for _sa in 3:
+				GameState.run_plants["star_algae"] = int(GameState.run_plants.get("star_algae", 0)) + 1
+			GameState.run_proj_dodged += 15
 		GameState.end_run("caught_by_wall" if r == 0 else "fell_into_chasm")
+	Progress.record_shop_instant(10, 1, 5)
 	if Progress.unlocked_achievement_count() != SkinCatalog.ACHIEVEMENTS.size():
-		fail.call("全部 20 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
+		fail.call("全部 26 个成就应均已解锁，实际=%d" % Progress.unlocked_achievement_count())
 	for a: Dictionary in SkinCatalog.ARTWORKS:
 		var sid := String(a["id"])
 		if not Progress.is_skin_unlocked(sid):
@@ -1312,6 +1374,511 @@ func _run_achievements_demo() -> void:
 		get_tree().quit(1)
 
 
+## `-- --phase1-demo`：验证 v2.0 Phase 1 全套核心链路：
+##   4 种植物资源、保鲜箱上限替换、水泡护盾免减速、冲刺破障、红血削减→红转黑锁血、水压退场与右向左技能预警。
+func _run_phase1_demo() -> void:
+	var st := {"ok": true}
+	var fail := func(msg: String) -> void:
+		st["ok"] = false
+		push_error("[phase1] FAIL: " + msg)
+		print("[phase1] FAIL: " + msg)
+
+	Progress.begin_test_sandbox()
+
+	# 1. 植物贴图、黑鲸娘二阶段施法 4 帧、黑鲸娘飞行物 2 款、Phase 5 pixelfx 全部可加载
+	for pid: String in GameState.PLANT_RARITY:
+		if not PlantPickup.PLANT_TEX.has(pid) or PlantPickup.PLANT_TEX[pid] == null:
+			fail.call("缺少植物贴图: " + pid)
+	for tex in Chaser.CAST_TEX:
+		if tex == null:
+			fail.call("缺少 chaser_cast 贴图")
+	if BossProjectile.TEX_PROJ_LOW == null or BossProjectile.TEX_PROJ_MID == null or BossProjectile.TEX_PROJ_HIGH == null:
+		fail.call("缺少黑鲸风飞行物贴图 proj_low / proj_mid / proj_high")
+	for fx_k in ["action/obstacle_break", "action/bubble_shield_break", "action/dash_shockwave",
+			"chase/wall_retreat", "chase/skill_warning"]:
+		if not FxCatalog.SPECS.has(fx_k) or not ResourceLoader.exists(String(FxCatalog.SPECS[fx_k]["path"])):
+			fail.call("缺少 pixelfx 资源: " + fx_k)
+
+	# 2. 鲸尾兜容量(9 格常规 + 1 格星光藻专属 = 10 格) & 互不顶替
+	GameState.start_run(GameState.Mode.NORMAL)
+	if GameState.basic_cap != 9 or GameState.star_cap != 1 or GameState.cooler_cap != 10:
+		fail.call("鲸尾兜初始容量应为 9+1=10，实际=%d+%d=%d" % [
+			GameState.basic_cap, GameState.star_cap, GameState.cooler_cap
+		])
+	for _i in 4:
+		if not GameState.add_plant("kelp"):
+			fail.call("装入第 %d 棵 kelp 失败" % (_i + 1))
+	for _i in 3:
+		if not GameState.add_plant("nori"):
+			fail.call("装入第 %d 棵 nori 失败" % (_i + 1))
+	for _i in 2:
+		if not GameState.add_plant("seaweed"):
+			fail.call("装入第 %d 棵 seaweed 失败" % (_i + 1))
+	if GameState.basic_plants_count() != 9:
+		fail.call("常规 9 格计数异常=%d" % GameState.basic_plants_count())
+	if GameState.add_plant("nori") or GameState.add_plant("kelp"):
+		fail.call("常规 9 格满后不应继续装入或顶替普通植物")
+	if not GameState.add_plant("star_algae"):
+		fail.call("常规 9 格满后专属第 10 格应可收入 star_algae")
+	if int(GameState.run_plants["kelp"]) != 4 or int(GameState.run_plants["nori"]) != 3 \
+			or int(GameState.run_plants["seaweed"]) != 2 or int(GameState.run_plants["star_algae"]) != 1:
+		fail.call("星光藻收入后不得顶替已有植物: " + str(GameState.run_plants))
+	if GameState.add_plant("star_algae"):
+		fail.call("星光藻专属 1 格满后不应超收")
+
+	# 3. 水泡护盾：免除 1 次碰撞减速硬直、保留 dash_charge 且不滑落收集物；碰障有 30% 概率滑落收集物与提示
+	if not is_equal_approx(GameConfig.hit_plant_drop_chance, 0.30):
+		fail.call("碰障滑落概率应为 0.30")
+	player.bubble_shield = 1
+	player.dash_charge = 2
+	var spd_before := player.speed
+	player.take_hit("low")
+	if player.bubble_shield != 0 or player._stun > 0.0 or player.speed < spd_before * 0.99 or player.dash_charge != 2:
+		fail.call("水泡护盾未正确免除减速或误扣势能")
+	if GameState.total_plants() != 10:
+		fail.call("水泡护盾抵挡撞击时不应滑落收集物")
+	var dropped_p := GameState.drop_random_plant(true)
+	if dropped_p == "" or GameState.total_plants() != 9 \
+			or not hud._lbl_drop_toast.visible \
+			or not hud._lbl_drop_toast.text.begins_with("有物品不小心滑落（"):
+		fail.call("收集物滑落逻辑或 HUD 提示异常: dropped=%s toast=%s" % [
+			dropped_p, hud._lbl_drop_toast.text
+		])
+
+	# 4. 冲刺破障 + ~1500m 采满节奏/等概率随机/无低障顶部悬空
+	terrain.reset()
+	var broke_any := false
+	var seen_chunk_cols := {}
+	var spawned_plants: Array[Dictionary] = []
+	for k in 120:
+		terrain.update_for(player.global_position.x + float(k) * 800.0)
+		for chunk in terrain._chunks:
+			if seen_chunk_cols.has(chunk.start_col):
+				continue
+			seen_chunk_cols[chunk.start_col] = true
+			if not broke_any:
+				for c in chunk.b.size():
+					if chunk.b[c] == TerrainPatterns.LOW:
+						chunk._break_hazard_col(c)
+						if not chunk._broken_cols.has(c) or GameState.run_obstacles_broken < 1:
+							fail.call("冲刺破障未标记破损或未计数")
+						broke_any = true
+						break
+			for sub in chunk.get_children():
+				var pick := sub as PlantPickup
+				if pick == null:
+					continue
+				var lcol := int(floor(pick.position.x / float(GameConfig.TILE)))
+				if lcol >= 0 and lcol < chunk.b.size() and chunk.b[lcol] == TerrainPatterns.LOW:
+					fail.call("陆地矮障碍列上不得悬浮刷新收集物: " + pick.plant_id)
+				spawned_plants.append({"gcol": chunk.start_col + lcol, "id": pick.plant_id})
+	if not broke_any:
+		fail.call("测试用地形未找到可破坏矮障碍")
+	if spawned_plants.size() < 6:
+		fail.call("1500m 区间内收集物过少: %d" % spawned_plants.size())
+	else:
+		var max_gap := 0
+		for idx_p in spawned_plants.size():
+			var item: Dictionary = spawned_plants[idx_p]
+			var pid_s := String(item["id"])
+			if idx_p > 0:
+				var prev_item: Dictionary = spawned_plants[idx_p - 1]
+				if String(prev_item["id"]) == pid_s:
+					fail.call("收集物连续出现同种植物: " + pid_s)
+				max_gap = maxi(max_gap, int(item["gcol"]) - int(prev_item["gcol"]))
+		if max_gap > 205:
+			fail.call("植物间距偏大(>205m): %d 列" % max_gap)
+
+	# 5. 常规模式不狂暴只追击击退；困难模式近身弹开(<=240px) 1/2/3 扣血切图并进狂暴二阶段
+	GameState.start_run(GameState.Mode.NORMAL)
+	director._wave_timer = 0.01
+	director.update(0.016)
+	chaser.x = player.global_position.x - 180.0
+	player.dash_charge = GameConfig.dash_charge_max
+	player._start_dash()
+	await get_tree().process_frame
+	player._dash_t = 0.0
+	hud.update_live(player, director)
+	if GameState.boss_hp != 3 or GameState.boss_enraged or not director._post_hit_rush or hud._boss_bar.visible:
+		fail.call("常规模式近身弹开应震退回逼且不扣 Boss 血条、不显示血条")
+
+	GameState.start_run(GameState.Mode.HARD)
+	if GameConfig.boss_max_hp != 3 or not is_equal_approx(GameConfig.boss_proj_star_drop_chance, 0.12):
+		fail.call("Boss 血量或星光藻 12%% 掉率配置异常")
+	director._wave_timer = 0.01
+	director.update(0.016)
+	if not director.in_chase or not chaser.active:
+		fail.call("时间驱动倒计时归零后未正常触发追击进入一阶段")
+	# 远处（gap > 240px）按 Space 不应打中黑鲸娘
+	player.dash_charge = GameConfig.dash_charge_max
+	player._start_dash()
+	await get_tree().process_frame
+	player._dash_t = 0.0
+	if GameState.boss_hp != 3 or director._post_hit_rush:
+		fail.call("黑鲸娘尚在远处(gap=%.1f)按 Space 不应隔空扣血" % chaser.gap())
+
+	# 第 1 次近身弹开 → 切图1 (CAST_TEX[3]) → 疾追回逼 ~1.8s → 慢慢消散
+	chaser.x = player.global_position.x - 180.0
+	player.dash_charge = GameConfig.dash_charge_max
+	player._start_dash()
+	await get_tree().process_frame
+	player._dash_t = 0.0
+	if GameState.boss_hp != 2 or chaser._select_draw_tex()[0] != Chaser.CAST_TEX[3] or not director._post_hit_rush:
+		fail.call("第 1 次近身弹开应扣血切图 1 并进入回逼追击")
+	for _s1 in 40:
+		player.global_position.x += player.speed * 0.05
+		wall.update(0.05)
+		chaser.update(0.05)
+		director.update(0.05)
+	if director.in_chase or chaser.active or chaser._fade_target > 0.0:
+		fail.call("第 1 次弹开回逼后应结束追击并慢慢消散")
+
+	# 第 2 次近身弹开 → 切图2 (CAST_TEX[0]) → 疾追回逼 → 慢慢消散
+	director._wave_timer = 0.01
+	director.update(0.016)
+	chaser.x = player.global_position.x - 180.0
+	player.dash_charge = GameConfig.dash_charge_max
+	player._start_dash()
+	await get_tree().process_frame
+	player._dash_t = 0.0
+	if GameState.boss_hp != 1 or chaser._select_draw_tex()[0] != Chaser.CAST_TEX[0]:
+		fail.call("第 2 次近身弹开应扣血切图 2")
+	for _s2 in 40:
+		player.global_position.x += player.speed * 0.05
+		wall.update(0.05)
+		chaser.update(0.05)
+		director.update(0.05)
+
+	# 第 3 次近身弹开 → 切图3 (CAST_TEX[1]) + 红转黑锁血 + 水压墙屏幕左缘退场 → 图3 回逼 → 消散进二阶段召弹
+	director._wave_timer = 0.01
+	director.update(0.016)
+	chaser.x = player.global_position.x - 180.0
+	player.dash_charge = GameConfig.dash_charge_max
+	player._start_dash()
+	await get_tree().process_frame
+	player._dash_t = 0.0
+	if GameState.boss_hp != 0 or not GameState.boss_enraged or chaser._select_draw_tex()[0] != Chaser.CAST_TEX[1]:
+		fail.call("第 3 次近身弹开应触发红转黑锁血并切图 3")
+	if not wall._retreating and wall.active:
+		fail.call("进入二阶段后 DeathWall 未启动退场")
+	if wall.x < player.global_position.x - 420.0:
+		fail.call("进入二阶段时 DeathWall 未拉入可见左侧边缘播放退场 (wall_x=%.1f player_x=%.1f)" % [
+			wall.x, player.global_position.x
+		])
+	# 推进完成图3回逼(1.8s)+消散等待(2.0s)+首弹计时(1.65s)后进二阶段召弹试炼直道
+	for _step in 120:
+		player.global_position.x += player.speed * 0.05
+		wall.update(0.05)
+		chaser.update(0.05)
+		director.update(0.05)
+		boss_proj.update(0.05)
+	if wall.active:
+		fail.call("DeathWall 在二阶段推进后仍未彻底退场")
+	if not director.in_barrage or not terrain.barrage_safe_mode:
+		fail.call("第 3 次消散后应进入二阶段无障碍召弹试炼 (barrage=%s safe=%s)" % [
+			str(director.in_barrage), str(terrain.barrage_safe_mode)
+		])
+	if not boss_proj.is_busy():
+		fail.call("ChaseDirector 进入二阶段召弹后未自动触发右向左技能")
+
+	boss_proj.reset()
+	GameState.phase = GameState.Phase.RUNNING
+	GameState.boss_enraged = true
+	player.alive = true
+	var lane_base_y := boss_proj._safe_surface_y(player.global_position.x + 280.0)
+	player.global_position.y = lane_base_y
+	boss_proj.spawn_attack(1)
+	if boss_proj._warns.size() != 1:
+		fail.call("BossProjectile 未生成右侧预警")
+	# 1) 中高度(lane 1)：下滑可躲，同时检查世界坐标高速左移
+	player.state = Player.St.SLIDE
+	player._set_slide_shape()
+	var prev_proj_wx := 1e12
+	var moved_left := false
+	for _step2 in 90:
+		boss_proj.update(0.05)
+		if not boss_proj._projs.is_empty():
+			var cur_wx := boss_proj._projs[0].world_x
+			if prev_proj_wx < 1e11 and cur_wx < prev_proj_wx - 10.0:
+				moved_left = true
+			prev_proj_wx = cur_wx
+	if not moved_left:
+		fail.call("飞行物世界横坐标未相对地面高速左移")
+	if GameState.run_proj_dodged < 1:
+		fail.call("二阶段中高度下滑躲避后未计数 (dodged=%d)" % GameState.run_proj_dodged)
+
+	# 2) 中高度(lane 1)：跳跃同样可躲
+	boss_proj.reset()
+	player.state = Player.St.AIR
+	player._set_stand_shape()
+	player.global_position.y = lane_base_y - 110.0
+	boss_proj.spawn_attack(1)
+	for _step2b in 90:
+		boss_proj.update(0.05)
+	if GameState.run_proj_dodged < 2 or GameState.phase == GameState.Phase.ENDED:
+		fail.call("中高度(lane 1)跳跃同样应可躲过")
+
+	# 3) 高高度(lane 2)：下滑可躲，跳跃则会撞中致命
+	boss_proj.reset()
+	player.global_position.y = lane_base_y
+	player.state = Player.St.SLIDE
+	player._set_slide_shape()
+	boss_proj.spawn_attack(2)
+	for _step2c in 90:
+		boss_proj.update(0.05)
+	if GameState.run_proj_dodged < 3 or GameState.phase == GameState.Phase.ENDED:
+		fail.call("高高度(lane 2)下滑应可躲过")
+
+	boss_proj.reset()
+	player.state = Player.St.AIR
+	player._set_stand_shape()
+	player.global_position.y = lane_base_y - 110.0
+	boss_proj.spawn_attack(2)
+	for _step2d in 80:
+		boss_proj.update(0.05)
+		if GameState.phase == GameState.Phase.ENDED:
+			break
+	if GameState.phase != GameState.Phase.ENDED or GameState.death_reason != "caught_by_boss_proj":
+		fail.call("高高度(lane 2)起跳应撞中致命")
+	# 恢复存活态以继续后续停滞与低空检查
+	GameState.start_run(GameState.Mode.NORMAL)
+	GameState.boss_enraged = true
+	player.alive = true
+	player.global_position.y = 0.0
+
+	# 验证掉入凹地形原地跑时（distance=0），时间驱动仍能正常加速推波次（不死锁）
+	director.in_barrage = false
+	director.in_chase = false
+	director._wave_timer = 1.0
+	director._stall_t = 2.0
+	director._last_px = player.global_position.x
+	for _st_i in 10:
+		director.update(0.05)
+	if not director.in_chase:
+		fail.call("原地停滞卡地形时时间驱动未按期触发黑鲸娘追击")
+
+	# 验证狂暴阶段咬击切用图 4 (CAST_TEX[2])
+	chaser.begin(player.global_position.x)
+	chaser._start_bite()
+	if chaser._select_draw_tex()[0] != Chaser.CAST_TEX[2]:
+		fail.call("狂暴阶段被咬住应切用图 4 (CAST_TEX[2])")
+
+	# 重置活体后验证站立硬吃贴地飞行物(lane 0)直接触发致命结算（而非仅减速）
+	GameState.start_run(GameState.Mode.HARD)
+	GameState.boss_enraged = true
+	boss_proj.reset()
+	player.alive = true
+	player.state = Player.St.RUN
+	player._set_stand_shape()
+	player._dash_t = 0.0
+	boss_proj.spawn_attack(0)
+	for _step3 in 80:
+		boss_proj.update(0.05)
+		if GameState.phase == GameState.Phase.ENDED:
+			break
+	if GameState.phase != GameState.Phase.ENDED or GameState.death_reason != "caught_by_boss_proj":
+		fail.call("中了二阶段飞行物应直接死亡结算 (phase=%s reason=%s)" % [
+			str(GameState.phase), GameState.death_reason
+		])
+
+	Progress.end_test_sandbox()
+	if st["ok"]:
+		print("[phase1] ALL PASS (plants=4 cast=4 enraged=true wall_retreated=true proj_dodged=%d broken=%d)" % [
+			GameState.run_proj_dodged, GameState.run_obstacles_broken
+		])
+		get_tree().quit(0)
+	else:
+		push_error("[phase1] FAIL")
+		get_tree().quit(1)
+
+
+func _on_end_shop_requested() -> void:
+	if GameState.phase != GameState.Phase.ENDED or not hud.is_end_panel_visible():
+		return
+	_run_transition(func() -> void:
+		GameState.to_menu()
+		menu.open_shop()
+	)
+
+
+func _prepare_shop_shot() -> void:
+	Progress.begin_test_sandbox()
+	Progress.ingredients = {"kelp": 5, "nori": 4, "seaweed": 5, "star_algae": 2}
+	Progress.shell_coins = 180
+	Progress.shop_decor_lv = 1
+	Progress.total_boss_enrages = 1
+	menu.open_shop()
+	var sp := menu._shop
+	sp._start_shift()
+	# 摆上热腾腾出餐托盘 + 一台正在金脆区的油炸锅 + 多名海洋顾客（含乔装黑鲸娘）方便截图验收
+	sp._on_craft_dish("fries")
+	sp._cook_slots[0].progress = 0.72
+	sp._try_place_on_tray("burger", true)
+	sp._try_place_on_tray("supreme", true)
+	sp._cust_slots[0].occupied = true
+	sp._cust_slots[0].cust_id = "seahorse"
+	sp._cust_slots[0].max_patience = 28.0
+	sp._cust_slots[0].patience = 24.0
+	sp._cust_slots[0].orders.clear()
+	sp._cust_slots[0].orders.append("fries")
+	sp._cust_slots[1].occupied = true
+	sp._cust_slots[1].cust_id = "jelly"
+	sp._cust_slots[1].orders.clear()
+	sp._cust_slots[1].orders.append("nuggets")
+	sp._cust_slots[1].max_patience = 32.0
+	sp._cust_slots[1].patience = 28.0
+	sp._cust_slots[2].occupied = true
+	sp._cust_slots[2].cust_id = "shark"
+	sp._cust_slots[2].orders.clear()
+	sp._cust_slots[2].orders.append("supreme")
+	sp._cust_slots[2].max_patience = 34.0
+	sp._cust_slots[2].patience = 29.0
+	sp._refresh_ui()
+
+
+func _run_phase2_demo() -> void:
+	await get_tree().process_frame
+	Progress.begin_test_sandbox()
+	var st := {"ok": true}
+	var fail := func(msg: String):
+		push_error("[phase2] FAIL: " + msg)
+		st["ok"] = false
+
+	# 1. 验证主菜单已重整为 4 大入口（出海奔跑 / 鲸堡小店 / 换装 / 设置）
+	if MainMenu.OPTIONS.size() != 4 or String(MainMenu.OPTIONS[0]["title"]) != "出海奔跑" \
+			or String(MainMenu.OPTIONS[1]["title"]) != "鲸堡小店":
+		fail.call("MainMenu 入口配置异常")
+
+	# 2. 打开小店并验证首次开业赠礼、2分半营业、固定座位(含水母姐妹)、慢火金脆与黑鲸娘双倍小费
+	menu.open_shop()
+	var sp := menu._shop
+	if not sp.visible or int(Progress.ingredients["kelp"]) != 3 or int(Progress.ingredients["nori"]) != 2:
+		fail.call("小店首次打开赠礼异常: " + str(Progress.ingredients))
+	if not is_equal_approx(ShopPanel.SHIFT_DURATION, 150.0):
+		fail.call("小店单轮营业时长应为 150s (2:30)")
+
+	sp._start_shift()
+	# 开局先于 Booth 1 迎来水母姐妹，Slot 0 固定海马，Slot 1 下次轮到海龟爷爷，Slot 2 为锤头鲨/黑鲸娘
+	if not sp._cust_slots[1].occupied or sp._cust_slots[1].cust_id != "jelly":
+		fail.call("Slot 1 首客应保障水母姐妹登场: " + sp._cust_slots[1].cust_id)
+	sp._cust_slots[0].leave_cd = 0.0
+	sp._try_spawn_customer(0)
+	if not sp._cust_slots[0].occupied or sp._cust_slots[0].cust_id != "seahorse":
+		fail.call("Slot 0 外卖窗应固定海马: " + sp._cust_slots[0].cust_id)
+	sp._cust_slots[1].occupied = false
+	sp._cust_slots[1].leave_cd = 0.0
+	sp._try_spawn_customer(1)
+	if sp._cust_slots[1].cust_id != "turtle":
+		fail.call("Slot 1 轮转应出现海龟爷爷: " + sp._cust_slots[1].cust_id)
+
+	sp._on_craft_dish("fries")
+	if not sp._cook_slots[0].active or sp._cook_slots[0].dish_id != "fries" or sp._cook_slots[0].duration < 2.5:
+		fail.call("海苔咔嚓长条未成功下锅或烹饪节奏未放慢 (dur=%.2f)" % sp._cook_slots[0].duration)
+	sp._cook_slots[0].progress = 0.72
+	if not sp._trigger_crisp_hit("fryer"):
+		fail.call("金脆区按键判定未触发")
+	if sp._tray[0].dish_id != "fries" or not sp._tray[0].crisp:
+		fail.call("金脆出锅菜品未落入出餐托盘")
+
+	sp._cust_slots[2].occupied = true
+	sp._cust_slots[2].cust_id = "blackwhale"
+	sp._cust_slots[2].eating = false
+	sp._cust_slots[2].orders.clear()
+	sp._cust_slots[2].orders.append("fries")
+	sp._cust_slots[2].max_patience = 30.0
+	sp._cust_slots[2].patience = 30.0
+	var coins_before := Progress.shell_coins
+	if not sp._serve_customer_slot(2):
+		fail.call("递餐给乔装黑鲸娘失败")
+	# 基础 12 * 金脆 1.3 * 黑鲸娘 2.0 = 31
+	if Progress.shell_coins - coins_before < 30 or not sp._cust_slots[2].eating:
+		fail.call("黑鲸娘双倍贝壳币或开心嚼嚼状态异常: +%d" % (Progress.shell_coins - coins_before))
+
+	# 3. 店铺 3 条升级线与保鲜兜容量联动
+	Progress.add_shell_coins(400)
+	if not Progress.upgrade_shop_track("fryer") or Progress.shop_fryer_lv != 1:
+		fail.call("炸锅升级失败")
+	if not Progress.upgrade_shop_track("decor") or Progress.shop_decor_lv != 1:
+		fail.call("装潢升级失败")
+	if not Progress.upgrade_shop_track("cooler") or Progress.cooler_upgrade_lv != 1 or Progress.cooler_capacity != 12:
+		fail.call("保鲜兜扩容失败: cap=%d" % Progress.cooler_capacity)
+
+	# 验证升级双锅后可同时烹饪 2 份油炸菜
+	Progress.ingredients["kelp"] += 4
+	Progress.ingredients["seaweed"] += 4
+	sp._on_craft_dish("burger")
+	sp._on_craft_dish("nuggets")
+	if not sp._cook_slots[0].active or not sp._cook_slots[1].active:
+		fail.call("双联炸锅未支持同时烹饪 2 份")
+	sp._cook_slots[0].progress = 1.0
+	sp._cook_slots[1].progress = 1.0
+	sp._process(0.05)
+
+	# 4. 验证试吃 Buff → 正常出海联动：
+	#    (a) 脆藻双层堡：开局 1 层水泡护盾，且不与练习模式消耗混淆
+	var tray_burger := -1
+	for ti in sp._tray.size():
+		if sp._tray[ti].dish_id == "burger":
+			tray_burger = ti
+			break
+	if tray_burger < 0:
+		fail.call("托盘未找到做好的脆藻双层堡")
+	else:
+		sp._on_eat_tray_buff(tray_burger)
+	if Progress.active_meal_buff != "burger":
+		fail.call("试吃脆藻双层堡后未设置赛前 Buff")
+	sp.close()
+
+	GameState.start_run(GameState.Mode.PRACTICE)
+	if Progress.active_meal_buff != "burger" or player.bubble_shield != 0:
+		fail.call("练习模式不应偷跑消耗正常出海 Buff")
+
+	GameState.start_run(GameState.Mode.NORMAL)
+	if Progress.active_meal_buff != "" or GameState.active_run_buff != "shield" or player.bubble_shield != 1:
+		fail.call("正常出海未正确消费并激活护盾 Buff (shield=%d)" % player.bubble_shield)
+	if GameState.cooler_cap != 12 or GameState.basic_cap != 11:
+		fail.call("扩容后的保鲜兜容量未同步到出航状态 (%d/%d)" % [GameState.basic_cap, GameState.cooler_cap])
+
+	#    (b) 海藻脆脆块：势能上限 2 格即可冲刺 + (c) 海苔长条：对一阶段黑鲸娘 2 格伤
+	Progress.set_active_meal_buff("nuggets")
+	GameState.start_run(GameState.Mode.NORMAL)
+	if GameState.effective_dash_charge_max() != 2:
+		fail.call("海藻脆脆块快充 Buff 未将上限改为 2 格")
+
+	Progress.set_active_meal_buff("fries")
+	GameState.start_run(GameState.Mode.HARD)
+	director._wave_timer = 0.01
+	director.update(0.016)
+	chaser.x = player.global_position.x - 160.0
+	player.dash_charge = GameState.effective_dash_charge_max()
+	player._start_dash()
+	await get_tree().process_frame
+	if GameState.boss_hp != 1:
+		fail.call("困难模式海苔长条冲刺增压未造成 2 格伤害 (boss_hp=%d)" % GameState.boss_hp)
+
+	#    (d) 星光特饮 22% 掉率 + 至尊堡 1.35s 冲刺+护盾 + 困难/常规均可吃Buff存档
+	Progress.set_active_meal_buff("soda")
+	GameState.start_run(GameState.Mode.HARD)
+	if not is_equal_approx(GameState.effective_star_drop_chance(), 0.22):
+		fail.call("困难模式星光藻皇特饮未将星光藻掉率提升至 22%%")
+
+	Progress.set_active_meal_buff("supreme")
+	GameState.start_run(GameState.Mode.HARD)
+	if player.bubble_shield != 1:
+		fail.call("困难模式星光海藻至尊堡未附带水泡护盾")
+	player._start_dash()
+	if player._dash_t <= GameConfig.dash_time * 1.30:
+		fail.call("星光海藻至尊堡未延长冲刺时间")
+
+	Progress.end_test_sandbox()
+	if st["ok"]:
+		print("[phase2] ALL PASS (shop_ui=ok buffs=6 upgrades=3 disguise_double=ok)")
+		get_tree().quit(0)
+	else:
+		push_error("[phase2] FAIL")
+		get_tree().quit(1)
+
+
 ## 点一下某个键（按下 + 抬起）。只用于 `--pause-demo`。
 func _tap(k: Key) -> void:
 	_send_key(k, true)
@@ -1359,12 +1926,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		return          # 界面上的按键交给 MainMenu 自己处理
 	if event.is_action_pressed("restart"):
 		if GameState.phase == GameState.Phase.ENDED:
-			# 被黑鲸娘咬死时需等 0.45s 咬击播完、结算面板弹出后再响应 R，避免误触跳过咬击动画；
-			# 其余死法结算面板会立刻弹出，按 R 即可马上重开。
+			# 被黑鲸娘咬死时需等 0.45s 咬击播完、结算面板弹出后再响应 R/B，避免误触跳过咬击动画；
+			# 其余死法结算面板会立刻弹出，按 R/B 即可马上重开或进店。
 			if hud.is_end_panel_visible():
 				_run_transition(func() -> void: _on_mode_chosen(GameState.mode))
 		elif GameState.is_sandbox():
 			_on_mode_chosen(GameState.mode)
+		return
+	if event is InputEventKey and event.pressed and not event.echo \
+			and (event as InputEventKey).keycode == KEY_B \
+			and GameState.phase == GameState.Phase.ENDED and hud.is_end_panel_visible():
+		_on_end_shop_requested()
+		get_viewport().set_input_as_handled()
 		return
 
 	# ---- 沙盒：手动调速。一路调到很慢就是逐帧慢放 ----
@@ -1523,3 +2096,265 @@ func _dump_debug() -> void:
 	print("模式拒绝统计：", terrain.reject_stats)
 	_report_anim_ladder()
 	print("=============================")
+
+
+func _pv_tick_proj_dodge(delta: float) -> void:
+	if _pv_dodge_timer > 0.0:
+		_pv_dodge_timer -= delta
+		if _pv_dodge_timer <= 0.0:
+			Input.action_release("jump")
+			Input.action_release("slide")
+			Input.action_release("dash")
+			if autopilot != null and _pv_scene == "boss":
+				autopilot.enabled = true
+	if boss_proj == null or player == null:
+		return
+	var px := player.global_position.x
+	for pi in boss_proj._projs:
+		var dx: float = float(pi.world_x) - px
+		if _pv_parry_next and pi.lane == 1 and dx > 30.0 and dx < 220.0:
+			_pv_parry_next = false
+			if autopilot != null:
+				autopilot.enabled = false
+			Input.action_release("jump")
+			Input.action_release("slide")
+			player.dash_charge = 3
+			Input.action_press("dash")
+			_pv_dodge_timer = 0.16
+			break
+		if dx > 50.0 and dx < 310.0 and _pv_dodge_timer <= 0.0:
+			if autopilot != null:
+				autopilot.enabled = false
+			if pi.lane == 0:
+				Input.action_release("slide")
+				Input.action_press("jump")
+				_pv_dodge_timer = 0.42
+			else:
+				Input.action_release("jump")
+				Input.action_press("slide")
+				_pv_dodge_timer = 0.48
+			break
+
+
+## `-- --pv-scene=<intro|cold_open|parkour|boss|shop|shield>`：60fps 宣传 PV 导演录制专场（仅保留纯净 SFX）。
+func _run_pv_scene() -> void:
+	AudioManager.stop_bgm(0.0)
+	AudioManager.set_bus_volumes(0.0, 1.0)
+	Progress.begin_test_sandbox()
+	Progress._force_track_for_test = false
+	if _toast != null:
+		_toast.visible = false
+
+	match _pv_scene:
+		"intro":
+			menu.set_intro_blocking(true)
+			menu.visible = false
+			intro.play(false)
+			intro._skip_lbl.text = ""
+			intro._subtitle_lbl.text = ""
+		"cold_open":
+			menu.visible = false
+			GameState.start_run(GameState.Mode.HARD)
+			AudioManager.stop_bgm(0.0)
+			AudioManager.set_bus_volumes(0.0, 1.0)
+			autopilot.enabled = true
+			terrain.push_script(["low1", "flat8"])
+			await get_tree().create_timer(0.25).timeout
+			director._wave_timer = 0.02
+			director.update(0.016)
+			chaser.x = player.global_position.x - 165.0
+			chaser._fade = 1.0
+			chaser._apply_fade()
+			await get_tree().create_timer(0.75).timeout
+			autopilot.enabled = false
+			player.dash_charge = 3
+			Input.action_press("dash")
+			await get_tree().create_timer(0.10).timeout
+			Input.action_release("dash")
+			await get_tree().create_timer(0.60).timeout
+			autopilot.enabled = true
+		"parkour":
+			menu.visible = false
+			GameState.start_run(GameState.Mode.NORMAL)
+			AudioManager.stop_bgm(0.0)
+			AudioManager.set_bus_volumes(0.0, 1.0)
+			autopilot.enabled = true
+			director._wave_timer = 999.0
+			var pk_t0 := Time.get_ticks_msec()
+			await get_tree().create_timer(12.2).timeout
+			for _wait_f in 120:
+				if player.is_on_floor() and player._anim.current_action() == "run" and int(player._anim._index) == 0:
+					break
+				await get_tree().process_frame
+			var swap_sec := float(Time.get_ticks_msec() - pk_t0) / 1000.0
+			print("[pv] parkour_swap_sec=%.3f" % swap_sec)
+			Progress.unlocked_achievements["ach_dive_300m"] = true
+			Progress.unlocked_achievements["ach_dive_600m"] = true
+			Progress.unlocked_achievements["ach_dive_1500m"] = true
+			Progress.set_equipped_skin("cozy_knit")
+			terrain.rng.seed = 20261130
+			player.global_position = Vector2(0.0, 0.0)
+			_prev_x = 0.0
+			terrain.reset()
+			_snap_camera()
+			director._wave_timer = 999.0
+		"boss":
+			menu.visible = false
+			GameState.start_run(GameState.Mode.HARD)
+			AudioManager.stop_bgm(0.0)
+			AudioManager.set_bus_volumes(0.0, 1.0)
+			autopilot.enabled = true
+			_pv_dodge = true
+			_pv_parry_next = false
+			GameState.boss_hp = 1
+			await get_tree().create_timer(0.25).timeout
+			director._wave_timer = 0.02
+			director.update(0.016)
+			chaser.x = player.global_position.x - 170.0
+			chaser._fade = 1.0
+			chaser._apply_fade()
+			await get_tree().create_timer(0.85).timeout
+			player.dash_charge = 3
+			Input.action_press("dash")
+			await get_tree().create_timer(0.10).timeout
+			Input.action_release("dash")
+			await get_tree().create_timer(0.55).timeout
+			director._wave_timer = 0.02
+			director._p2_next_is_barrage = true
+			director.update(0.016)
+			await get_tree().create_timer(1.25).timeout
+			autopilot.enabled = true
+			wall.active = false
+			wall.x = player.global_position.x - 2400.0
+			boss_proj._spawn_star_algae_reward()
+			# 高密度一镜到底 Climax：跳低刃 -> 滑高刃星光藻 -> 正面 Space 碎飞轮 -> 再连闪两波 -> 狂暴黑鲸贴脸扑咬！
+			boss_proj.spawn_attack(0)
+			await get_tree().create_timer(0.92).timeout
+			boss_proj.spawn_attack(2)
+			boss_proj._spawn_star_algae_reward()
+			await get_tree().create_timer(0.92).timeout
+			_pv_parry_next = true
+			boss_proj.spawn_attack(1)
+			await get_tree().create_timer(1.05).timeout
+			boss_proj.spawn_attack(0)
+			await get_tree().create_timer(0.85).timeout
+			boss_proj.spawn_attack(2)
+			boss_proj._spawn_star_algae_reward()
+			await get_tree().create_timer(0.85).timeout
+			# 终极压迫 Climax：清空多余弹幕后狂暴黑鲸本体贴脸逼近并凌空张嘴扑咬，定格红爪瞬间白闪断音！
+			director._finish_barrage()
+			boss_proj.reset()
+			director._begin()
+			chaser._pose_stage = 3
+			chaser.x = player.global_position.x - 175.0
+			chaser._fade = 1.0
+			chaser._apply_fade()
+			await get_tree().create_timer(0.95).timeout
+			if GameState.is_running() and chaser != null:
+				chaser._start_bite()
+		"shop":
+			Progress.ingredients = {"kelp": 18, "nori": 15, "seaweed": 15, "star_algae": 5}
+			Progress.shop_fryer_lv = 2
+			Progress.shop_decor_lv = 2
+			Progress.shell_coins = 180
+			menu.open_shop()
+			AudioManager.stop_bgm(0.0)
+			AudioManager.set_bus_volumes(0.0, 1.0)
+			var sp := menu._shop
+			sp._start_shift()
+			sp._cust_slots[0].occupied = true
+			sp._cust_slots[0].cust_id = "seahorse"
+			sp._cust_slots[0].eating = false
+			sp._cust_slots[0].orders.assign(["fries"])
+			sp._cust_slots[0].patience = 28.0
+			sp._cust_slots[1].occupied = true
+			sp._cust_slots[1].cust_id = "jelly"
+			sp._cust_slots[1].eating = false
+			sp._cust_slots[1].orders.assign(["nuggets"])
+			sp._cust_slots[1].patience = 32.0
+			sp._cust_slots[2].occupied = true
+			sp._cust_slots[2].cust_id = "turtle"
+			sp._cust_slots[2].eating = false
+			sp._cust_slots[2].orders.assign(["burger"])
+			sp._cust_slots[2].patience = 42.0
+			sp._refresh_ui()
+			await get_tree().create_timer(0.55).timeout
+			sp._on_craft_dish("fries")
+			sp._on_craft_dish("nuggets")
+			await get_tree().create_timer(1.55).timeout
+			sp._cook_slots[0].progress = 0.68
+			sp._trigger_crisp_hit("fryer")
+			await get_tree().create_timer(0.65).timeout
+			sp._cook_slots[1].progress = 0.68
+			sp._trigger_crisp_hit("fryer")
+			await get_tree().create_timer(0.60).timeout
+			sp._serve_customer_slot(1)
+			await get_tree().create_timer(0.95).timeout
+			sp._serve_customer_slot(0)
+			await get_tree().create_timer(0.60).timeout
+			sp._on_craft_dish("burger")
+			await get_tree().create_timer(1.55).timeout
+			sp._cook_slots[0].progress = 0.70
+			sp._trigger_crisp_hit("fryer")
+			await get_tree().create_timer(0.75).timeout
+			for ti in sp._tray.size():
+				if sp._tray[ti].dish_id == "burger":
+					sp._on_eat_tray_buff(ti)
+					break
+		"shop_button":
+			Progress.ingredients = {"kelp": 15, "nori": 12, "seaweed": 12, "star_algae": 4}
+			Progress.shop_fryer_lv = 2
+			Progress.shop_decor_lv = 2
+			Progress.shell_coins = 360
+			menu.open_shop()
+			AudioManager.stop_bgm(0.0)
+			AudioManager.set_bus_volumes(0.0, 1.0)
+			var sp := menu._shop
+			sp._start_shift()
+			sp._cust_slots[0].occupied = true
+			sp._cust_slots[0].cust_id = "seahorse"
+			sp._cust_slots[0].eating = false
+			sp._cust_slots[0].orders.assign(["fries"])
+			sp._cust_slots[0].patience = 28.0
+			sp._cust_slots[1].occupied = true
+			sp._cust_slots[1].cust_id = "jelly"
+			sp._cust_slots[1].eating = false
+			sp._cust_slots[1].orders.assign(["nuggets"])
+			sp._cust_slots[1].patience = 32.0
+			sp._cust_slots[2].occupied = true
+			sp._cust_slots[2].cust_id = "blackwhale"
+			sp._cust_slots[2].eating = false
+			sp._cust_slots[2].orders.assign(["supreme"])
+			sp._cust_slots[2].patience = 30.0
+			sp._tray[0].dish_id = "supreme"
+			sp._tray[0].crisp = true
+			sp._refresh_ui()
+			await get_tree().create_timer(1.20).timeout
+			sp._serve_customer_slot(2)
+			sp._cust_slots[2].eat_t = 5.5
+		"shield":
+			Progress.set_active_meal_buff("supreme")
+			menu.visible = false
+			GameState.start_run(GameState.Mode.HARD)
+			AudioManager.stop_bgm(0.0)
+			AudioManager.set_bus_volumes(0.0, 1.0)
+			autopilot.enabled = true
+			director._wave_timer = 999.0
+			await get_tree().create_timer(0.85).timeout
+			# 精确锁定下一个木桶(LOW)障碍，临时让位让大水泡护盾迎面撞碎破盾且不减速！
+			for _w in 240:
+				await get_tree().process_frame
+				if player.bubble_shield <= 0:
+					break
+				var cols := terrain.sample(player.global_position.x + 24.0, 5)
+				var low_ahead := false
+				for col_d: Dictionary in cols:
+					if int(col_d["hazard"]) == TerrainPatterns.LOW:
+						low_ahead = true
+						break
+				if low_ahead and not player.is_dashing():
+					autopilot.enabled = false
+					Input.action_release("jump")
+					break
+			await get_tree().create_timer(0.70).timeout
+			autopilot.enabled = true

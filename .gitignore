@@ -5,6 +5,7 @@
 dist/
 image/
 docs/
+PV/
 .workbuddy/
 
 # 工具临时目录与 Python 缓存
