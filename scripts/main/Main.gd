@@ -2105,7 +2105,7 @@ func _pv_tick_proj_dodge(delta: float) -> void:
 			Input.action_release("jump")
 			Input.action_release("slide")
 			Input.action_release("dash")
-			if autopilot != null and _pv_scene == "boss":
+			if autopilot != null and _pv_scene.begins_with("boss"):
 				autopilot.enabled = true
 	if boss_proj == null or player == null:
 		return
@@ -2247,6 +2247,40 @@ func _run_pv_scene() -> void:
 			director._begin()
 			chaser._pose_stage = 3
 			chaser.x = player.global_position.x - 175.0
+			chaser._fade = 1.0
+			chaser._apply_fade()
+			await get_tree().create_timer(0.95).timeout
+			if GameState.is_running() and chaser != null:
+				chaser._start_bite()
+		"boss_knit_bite":
+			menu.visible = false
+			Progress.unlocked_achievements["ach_dive_300m"] = true
+			Progress.unlocked_achievements["ach_dive_600m"] = true
+			Progress.unlocked_achievements["ach_dive_1500m"] = true
+			Progress.set_equipped_skin("cozy_knit")
+			GameState.start_run(GameState.Mode.HARD)
+			AudioManager.stop_bgm(0.0)
+			AudioManager.set_bus_volumes(0.0, 1.0)
+			autopilot.enabled = true
+			_pv_dodge = true
+			_pv_parry_next = false
+			GameState.boss_hp = 1
+			GameState.boss_enraged = true
+			wall.active = false
+			wall.x = player.global_position.x - 2400.0
+			await get_tree().create_timer(0.35).timeout
+			director._wave_timer = 0.02
+			director._p2_next_is_barrage = true
+			director.update(0.016)
+			await get_tree().create_timer(0.45).timeout
+			_pv_parry_next = true
+			boss_proj.spawn_attack(1)
+			await get_tree().create_timer(1.20).timeout
+			director._finish_barrage()
+			boss_proj.reset()
+			director._begin()
+			chaser._pose_stage = 3
+			chaser.x = player.global_position.x - 165.0
 			chaser._fade = 1.0
 			chaser._apply_fade()
 			await get_tree().create_timer(0.95).timeout
